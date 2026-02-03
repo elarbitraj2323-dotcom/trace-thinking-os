@@ -1,0 +1,42 @@
+{
+    "name": "TRACE v0",
+    "short_name": "TRACE",
+    "description": "Дневник мыслей с анализом и рекомендациями",
+    "lang": "ru-RU",
+    "dir": "ltr",
+    "theme_color": "#f5f5f7",
+    "background_color": "#ffffff",
+    "display": "standalone",
+    "orientation": "portrait",
+    "scope": "/",
+    "start_url": "/",
+    "icons": [
+        {
+            "src": "icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["productivity", "lifestyle", "utilities"],
+    "shortcuts": [
+        {
+            "name": "Новая запись",
+            "short_name": "Новая",
+            "description": "Создать новую запись",
+            "url": "/?new=true"
+        },
+        {
+            "name": "История",
+            "short_name": "История",
+            "description": "Просмотреть историю записей",
+            "url": "/?history=true"
+        }
+    ]
+}
