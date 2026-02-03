@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRACE v0 - Дневник мыслей</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#f5f5f7">
+    <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <h1>TRACE v0</h1>
+            <div class="header-actions">
+                <button id="historyBtn" class="icon-btn" title="История">📋</button>
+                <button id="exportBtn" class="icon-btn" title="Экспорт JSON">📥</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Экран новой записи -->
+            <section id="newEntryScreen" class="screen active">
+                <div class="entry-header">
+                    <h2>Новая запись</h2>
+                    <div class="datetime" id="currentDateTime"></div>
+                </div>
+                
+                <div class="entry-container">
+                    <textarea 
+                        id="entryText" 
+                        placeholder="Опишите вашу ситуацию, мысль или идею..." 
+                        autofocus
+                        rows="10"
+                    ></textarea>
+                    
+                    <div class="entry-stats">
+                        <span id="charCount">0 символов</span>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button id="saveBtn" class="btn primary">💾 Сохранить</button>
+                    <button id="analyzeBtn" class="btn secondary">🔍 Анализ</button>
+                    <button id="clearBtn" class="btn text">🗑️ Очистить</button>
+                </div>
+
+                <!-- Результаты анализа -->
+                <div id="analysisResult" class="analysis-result hidden">
+                    <h3>Результат анализа</h3>
+                    
+                    <div class="analysis-section">
+                        <h4>📝 Резюме</h4>
+                        <p id="summaryText">-</p>
+                    </div>
+                    
+                    <div class="analysis-grid">
+                        <div class="analysis-card">
+                            <h4>🏷️ Темы</h4>
+                            <div id="themesList" class="tags"></div>
+                        </div>
+                        
+                        <div class="analysis-card">
+                            <h4>😊 Эмоции</h4>
+                            <div id="emotionsList" class="tags"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-section">
+                        <h4>❓ Уточняющий вопрос</h4>
+                        <p id="questionText">-</p>
+                    </div>
+                    
+                    <div class="analysis-section">
+                        <h4>💡 Рекомендация</h4>
+                        <div id="recommendation" class="recommendation">
+                            <span class="recommendation-badge" id="recommendationType">-</span>
+                            <p id="recommendationText">-</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Экран истории -->
+            <section id="historyScreen" class="screen">
+                <div class="screen-header">
+                    <button id="backBtn" class="icon-btn back">←</button>
+                    <h2>История записей</h2>
+                </div>
+                
+                <div class="history-container">
+                    <div id="historyList" class="history-list">
+                        <!-- Записи будут добавляться динамически -->
+                        <div class="empty-state">
+                            📝 Записей пока нет
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Экран просмотра записи -->
+            <section id="viewEntryScreen" class="screen">
+                <div class="screen-header">
+                    <button id="backFromViewBtn" class="icon-btn back">←</button>
+                    <h2>Просмотр записи</h2>
+                </div>
+                
+                <div class="entry-container">
+                    <div class="entry-header">
+                        <div class="datetime" id="viewEntryDate"></div>
+                    </div>
+                    
+                    <div class="entry-content" id="viewEntryText"></div>
+                    
+                    <div class="analysis-result">
+                        <h3>Анализ от <span id="analysisDate"></span></h3>
+                        
+                        <div class="analysis-section">
+                            <h4>📝 Резюме</h4>
+                            <p id="viewSummary">-</p>
+                        </div>
+                        
+                        <div class="analysis-grid">
+                            <div class="analysis-card">
+                                <h4>🏷️ Темы</h4>
+                                <div id="viewThemes" class="tags"></div>
+                            </div>
+                            
+                            <div class="analysis-card">
+                                <h4>😊 Эмоции</h4>
+                                <div id="viewEmotions" class="tags"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="analysis-section">
+                            <h4>❓ Уточняющий вопрос</h4>
+                            <p id="viewQuestion">-</p>
+                        </div>
+                        
+                        <div class="analysis-section">
+                            <h4>💡 Рекомендация</h4>
+                            <div class="recommendation">
+                                <span class="recommendation-badge" id="viewRecommendationType">-</span>
+                                <p id="viewRecommendationText">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="app-footer">
+            <div class="storage-status">
+                <span id="storageInfo">Загрузка...</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Регистрация Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
+</body>
+</html>
