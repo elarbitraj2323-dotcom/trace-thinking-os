@@ -1,77 +1,82 @@
 // Конфигурация приложения
 const APP_CONFIG = {
     STORAGE_KEY: 'trace_v0_entries',
-    VERSION: '0.1.0',
-    MAX_ENTRIES: 100
+    USER_DICT_KEY: 'trace_v0_user_dict',
+    VERSION: '0.2.0',
+    MAX_ENTRIES: 100,
+    MIN_TEXT_LENGTH: 10
 };
 
-// Словари для анализа
+// Базовые словари для анализа
 const AnalysisRules = {
-    // Категории тем и их ключевые слова
     themes: {
-        'Дом / Быт': ['дом', 'быт', 'уборка', 'ремонт', 'квартира', 'комната', 'кухня', 'мебель', 'техника', 'интерьер', 'порядок', 'хаос', 'чистота', 'грязь'],
-        'Животные': ['собака', 'кот', 'кошка', 'питомец', 'животное', 'зверь', 'пёс', 'котёнок', 'щенок', 'аквариум', 'птица', 'хомяк', 'кролик', 'рыбка'],
-        'Радость / Позитив': ['радость', 'счастье', 'рад', 'доволен', 'ура', 'восторг', 'веселье', 'праздник', 'успех', 'победа', 'отлично', 'прекрасно', 'замечательно', 'класс'],
-        'Отношения': ['друг', 'подруга', 'парень', 'девушка', 'муж', 'жена', 'семья', 'родители', 'дети', 'ребёнок', 'отношения', 'любовь', 'ссора', 'примирение', 'общение'],
-        'Работа': ['работа', 'офис', 'начальник', 'коллега', 'зарплата', 'должность', 'карьера', 'увольнение', 'приём', 'совещание', 'отчёт', 'план', 'задание', 'обязанности'],
-        'Проекты': ['проект', 'задача', 'дедлайн', 'срок', 'клиент', 'заказчик', 'разработка', 'внедрение', 'запуск', 'тестирование', 'планирование', 'реализация', 'итерация'],
-        'Финансы': ['деньги', 'финансы', 'бюджет', 'доход', 'расход', 'зарплата', 'премия', 'кредит', 'долг', 'экономия', 'инвестиция', 'сбережения', 'покупка', 'продажа'],
-        'Здоровье': ['здоровье', 'болезнь', 'лекарство', 'врач', 'больница', 'симптом', 'диета', 'спорт', 'тренировка', 'бег', 'йога', 'питание', 'витамины', 'давление'],
-        'Развитие': ['развитие', 'обучение', 'курс', 'книга', 'саморазвитие', 'навык', 'знание', 'образование', 'университет', 'школа', 'экзамен', 'диплом', 'практика', 'опыт'],
-        'Творчество': ['творчество', 'искусство', 'рисование', 'музыка', 'танец', 'пение', 'писательство', 'поэзия', 'вдохновение', 'креатив', 'идея', 'хобби', 'рукоделие']
+        'Дом / Быт': ['дом', 'быт', 'уборка', 'ремонт', 'квартира', 'комната', 'кухня', 'мебель', 'техника'],
+        'Животные': ['собака', 'щенок', 'пёс', 'кот', 'кошка', 'питомец', 'животное', 'зверь', 'котёнок', 'аквариум', 'птица', 'хомяк'],
+        'Радость / Позитив': ['радость', 'счастье', 'рад', 'доволен', 'ура', 'восторг', 'веселье', 'праздник', 'успех', 'победа'],
+        'Отношения': ['друг', 'подруга', 'парень', 'девушка', 'муж', 'жена', 'семья', 'родители', 'дети', 'ребёнок', 'любовь', 'ссора'],
+        'Работа': ['работа', 'офис', 'начальник', 'коллега', 'зарплата', 'должность', 'карьера', 'увольнение', 'совещание', 'отчёт'],
+        'Проекты': ['проект', 'задача', 'дедлайн', 'срок', 'клиент', 'разработка', 'внедрение', 'запуск', 'тестирование', 'планирование'],
+        'Финансы': ['деньги', 'финансы', 'бюджет', 'доход', 'расход', 'премия', 'кредит', 'долг', 'экономия', 'инвестиция', 'покупка'],
+        'Здоровье': ['здоровье', 'болезнь', 'лекарство', 'врач', 'больница', 'диета', 'спорт', 'тренировка', 'питание', 'витамины'],
+        'Развитие': ['развитие', 'обучение', 'курс', 'книга', 'саморазвитие', 'навык', 'образование', 'университет', 'экзамен'],
+        'Творчество': ['творчество', 'искусство', 'рисование', 'музыка', 'танец', 'пение', 'писательство', 'поэзия', 'вдохновение', 'хобби']
     },
 
-    // Эмоции и их ключевые слова
     emotions: {
-        'Радость': ['радость', 'счастье', 'восторг', 'веселье', 'удовольствие', 'ликование', 'эйфория', 'праздник', 'ура'],
+        'Радость': ['радость', 'счастье', 'восторг', 'веселье', 'удовольствие', 'ликование', 'праздник', 'ура', 'рад', 'доволен'],
+        'Грусть': ['грусть', 'печаль', 'тоска', 'уныние', 'разочарование', 'сожаление', 'одиночество', 'скука', 'плакать', 'слёзы'],
+        'Тревога': ['тревога', 'беспокойство', 'опасение', 'страх', 'испуг', 'паника', 'нервозность', 'волнение', 'стресс', 'боюсь'],
+        'Злость': ['злость', 'гнев', 'ярость', 'раздражение', 'негодование', 'возмущение', 'злоба', 'ненависть', 'обида', 'сердит'],
+        'Усталость': ['усталость', 'устал', 'устала', 'изнеможение', 'истощение', 'сонливость', 'вялость', 'нет сил', 'утомление'],
         'Спокойствие': ['спокойствие', 'умиротворение', 'гармония', 'баланс', 'расслабление', 'отдых', 'релакс', 'мир', 'тишина', 'покой'],
-        'Тревога': ['тревога', 'беспокойство', 'опасение', 'страх', 'испуг', 'паника', 'нервозность', 'волнение', 'стресс'],
-        'Грусть': ['грусть', 'печаль', 'тоска', 'уныние', 'разочарование', 'сожаление', 'одиночество', 'скука', 'меланхолия'],
-        'Злость': ['злость', 'гнев', 'ярость', 'раздражение', 'негодование', 'возмущение', 'злоба', 'ненависть', 'обида'],
-        'Вдохновение': ['вдохновение', 'энтузиазм', 'подъём', 'идея', 'творческий', 'озарение', 'поток', 'замысел', 'креатив']
+        'Вдохновение': ['вдохновение', 'энтузиазм', 'подъём', 'идея', 'творческий', 'озарение', 'поток', 'замысел', 'креатив', 'вдохновлён']
     },
 
-    // Вопросы в зависимости от тем
     questions: {
         'Дом / Быт': 'Что бы вы хотели изменить в вашем домашнем пространстве?',
         'Животные': 'Как ваш питомец влияет на ваше настроение?',
         'Радость / Позитив': 'Что именно вызвало у вас такие позитивные эмоции?',
         'Отношения': 'Как это повлияло на ваши отношения с человеком?',
         'Работа': 'Что самое важное в этой рабочей ситуации?',
-        'Проекты': 'Какой следующий шаг в вашем проекте будет самым важным?',
+        'Проекты': 'Какой следующий шаг будет самым важным в вашем проекте?',
         'Финансы': 'Как это решение повлияет на ваш бюджет в долгосрочной перспективе?',
-        'Здоровье': 'Что вы можете сделать для улучшения вашего здоровья уже на этой неделе?',
+        'Здоровье': 'Что вы можете сделать для улучшения здоровья уже на этой неделе?',
         'Развитие': 'Чему конкретно вы хотите научиться в ближайшее время?',
         'Творчество': 'Что вас вдохновляет на творчество в последнее время?',
+        'Другое': 'Расскажите подробнее, что происходит?',
         'default': 'Что для вас самое важное в этой ситуации?'
     },
 
-    // Рекомендации в зависимости от эмоций
     recommendations: {
         'Радость': {
             type: 'do',
             label: 'Действовать',
             text: 'Эмоциональный фон благоприятный. Вы в хорошем настроении, это подходящее время для активных действий.'
         },
-        'Спокойствие': {
+        'Грусть': {
             type: 'wait',
             label: 'Подождать',
-            text: 'Ситуация стабильна, нет срочности. Можно подождать, собрать больше информации и принять взвешенное решение.'
+            text: 'Эмоциональное состояние снижено. Дайте себе время на восстановление сил перед принятием важных решений.'
         },
         'Тревога': {
             type: 'dont',
             label: 'Не действовать',
             text: 'Вы испытываете тревогу. В таком состоянии решения могут быть неоптимальными. Лучше успокоиться и вернуться к вопросу позже.'
         },
-        'Грусть': {
-            type: 'wait',
-            label: 'Подождать',
-            text: 'Эмоциональное состояние снижено. Дайте себе время на восстановление сил перед принятием важных решений.'
-        },
         'Злость': {
             type: 'dont',
             label: 'Не действовать',
             text: 'Сильные эмоции могут помешать объективной оценке. Отложите решение до того момента, когда эмоции улягутся.'
+        },
+        'Усталость': {
+            type: 'wait',
+            label: 'Подождать',
+            text: 'Организму нужен отдых. Примите решение после восстановления сил.'
+        },
+        'Спокойствие': {
+            type: 'wait',
+            label: 'Подождать',
+            text: 'Ситуация стабильна. Можно подождать, собрать больше информации и принять взвешенное решение.'
         },
         'Вдохновение': {
             type: 'do',
@@ -86,67 +91,174 @@ const AnalysisRules = {
     }
 };
 
+// Менеджер пользовательского словаря
+const UserDictionary = {
+    get: () => {
+        try {
+            const data = localStorage.getItem(APP_CONFIG.USER_DICT_KEY);
+            return data ? JSON.parse(data) : { themes: {}, emotions: {} };
+        } catch (error) {
+            console.error('Ошибка чтения пользовательского словаря:', error);
+            return { themes: {}, emotions: {} };
+        }
+    },
+
+    save: (dict) => {
+        try {
+            localStorage.setItem(APP_CONFIG.USER_DICT_KEY, JSON.stringify(dict));
+            return true;
+        } catch (error) {
+            console.error('Ошибка сохранения пользовательского словаря:', error);
+            return false;
+        }
+    },
+
+    addThemeWord: (theme, word) => {
+        const dict = UserDictionary.get();
+        if (!dict.themes[theme]) {
+            dict.themes[theme] = [];
+        }
+        if (!dict.themes[theme].includes(word)) {
+            dict.themes[theme].push(word);
+            return UserDictionary.save(dict);
+        }
+        return true;
+    },
+
+    addEmotionWord: (emotion, word) => {
+        const dict = UserDictionary.get();
+        if (!dict.emotions[emotion]) {
+            dict.emotions[emotion] = [];
+        }
+        if (!dict.emotions[emotion].includes(word)) {
+            dict.emotions[emotion].push(word);
+            return UserDictionary.save(dict);
+        }
+        return true;
+    },
+
+    // Объединение базовых и пользовательских словарей
+    getCombinedThemes: () => {
+        const base = AnalysisRules.themes;
+        const user = UserDictionary.get().themes;
+        const combined = { ...base };
+        
+        for (const [theme, words] of Object.entries(user)) {
+            if (!combined[theme]) {
+                combined[theme] = [];
+            }
+            combined[theme] = [...new Set([...combined[theme], ...words])];
+        }
+        
+        return combined;
+    },
+
+    getCombinedEmotions: () => {
+        const base = AnalysisRules.emotions;
+        const user = UserDictionary.get().emotions;
+        const combined = { ...base };
+        
+        for (const [emotion, words] of Object.entries(user)) {
+            if (!combined[emotion]) {
+                combined[emotion] = [];
+            }
+            combined[emotion] = [...new Set([...combined[emotion], ...words])];
+        }
+        
+        return combined;
+    }
+};
+
 // Анализатор текста
 const TextAnalyzer = {
-    // Нормализация текста
     normalizeText: (text) => {
         return text.toLowerCase()
-            .replace(/[^\wа-яё\s]/gi, ' ')
+            .replace(/[ё]/g, 'е')
+            .replace(/[^\wа-я\s]/gi, ' ')
             .replace(/\s+/g, ' ')
             .trim();
     },
 
-    // Поиск ключевых слов в тексте
-    findKeywords: (text, keywordLists) => {
-        const normalizedText = TextAnalyzer.normalizeText(text);
-        const words = normalizedText.split(' ');
-        const foundKeywords = {};
+    extractKeywords: (text) => {
+        const normalized = TextAnalyzer.normalizeText(text);
+        return normalized.split(' ')
+            .filter(word => word.length > 2 && !['это', 'что', 'как', 'для', 'меня', 'очень', 'мне', 'был', 'была'].includes(word));
+    },
+
+    findMatches: (keywords, dictionary) => {
+        const matches = {};
         
-        for (const [category, keywords] of Object.entries(keywordLists)) {
+        for (const [category, words] of Object.entries(dictionary)) {
             let count = 0;
             for (const keyword of keywords) {
-                if (normalizedText.includes(keyword.toLowerCase())) {
-                    count++;
+                for (const dictWord of words) {
+                    if (keyword.includes(dictWord) || dictWord.includes(keyword)) {
+                        count++;
+                        break;
+                    }
                 }
             }
             if (count > 0) {
-                foundKeywords[category] = count;
+                matches[category] = count;
             }
         }
         
-        return foundKeywords;
+        return matches;
     },
 
-    // Определение тем
     detectThemes: (text) => {
-        const themeMatches = TextAnalyzer.findKeywords(text, AnalysisRules.themes);
-        const themes = Object.keys(themeMatches);
-        
-        if (themes.length === 0) {
-            return ['Недостаточно данных'];
+        if (text.length < APP_CONFIG.MIN_TEXT_LENGTH) {
+            return ['Текст слишком короткий'];
         }
         
-        // Сортируем темы по количеству совпадений
-        return themes.sort((a, b) => themeMatches[b] - themeMatches[a]);
+        const keywords = TextAnalyzer.extractKeywords(text);
+        if (keywords.length === 0) {
+            return ['Недостаточно данных / Другое'];
+        }
+        
+        const combinedThemes = UserDictionary.getCombinedThemes();
+        const matches = TextAnalyzer.findMatches(keywords, combinedThemes);
+        
+        if (Object.keys(matches).length === 0) {
+            return ['Недостаточно данных / Другое'];
+        }
+        
+        const sorted = Object.entries(matches)
+            .sort((a, b) => b[1] - a[1])
+            .map(entry => entry[0]);
+        
+        const confidence = matches[sorted[0]] / keywords.length;
+        return confidence > 0.1 ? sorted.slice(0, 3) : ['Недостаточно данных / Другое'];
     },
 
-    // Определение эмоций
     detectEmotions: (text) => {
-        const emotionMatches = TextAnalyzer.findKeywords(text, AnalysisRules.emotions);
-        const emotions = Object.keys(emotionMatches);
+        if (text.length < APP_CONFIG.MIN_TEXT_LENGTH) {
+            return ['Текст слишком короткий'];
+        }
         
-        if (emotions.length === 0) {
+        const keywords = TextAnalyzer.extractKeywords(text);
+        if (keywords.length === 0) {
             return ['Не определено'];
         }
         
-        // Сортируем эмоции по количеству совпадений
-        return emotions.sort((a, b) => emotionMatches[b] - emotionMatches[a]);
+        const combinedEmotions = UserDictionary.getCombinedEmotions();
+        const matches = TextAnalyzer.findMatches(keywords, combinedEmotions);
+        
+        if (Object.keys(matches).length === 0) {
+            return ['Не определено'];
+        }
+        
+        const sorted = Object.entries(matches)
+            .sort((a, b) => b[1] - a[1])
+            .map(entry => entry[0]);
+        
+        const confidence = matches[sorted[0]] / keywords.length;
+        return confidence > 0.15 ? sorted.slice(0, 2) : ['Не определено'];
     },
 
-    // Генерация уточняющего вопроса
     generateQuestion: (themes) => {
-        if (themes[0] === 'Недостаточно данных') {
-            return AnalysisRules.questions.default;
+        if (themes[0] === 'Текст слишком короткий' || themes[0] === 'Недостаточно данных / Другое') {
+            return AnalysisRules.questions['Другое'];
         }
         
         for (const theme of themes) {
@@ -158,9 +270,8 @@ const TextAnalyzer = {
         return AnalysisRules.questions.default;
     },
 
-    // Генерация рекомендации
     generateRecommendation: (emotions) => {
-        if (emotions[0] === 'Не определено') {
+        if (emotions[0] === 'Текст слишком короткий' || emotions[0] === 'Не определено') {
             return AnalysisRules.recommendations.default;
         }
         
@@ -173,35 +284,36 @@ const TextAnalyzer = {
         return AnalysisRules.recommendations.default;
     },
 
-    // Генерация краткого резюме
     generateSummary: (text, themes, emotions) => {
-        const wordCount = text.trim().split(/\s+/).length;
+        if (text.length < APP_CONFIG.MIN_TEXT_LENGTH) {
+            return 'Текст слишком короткий для анализа. Напишите хотя бы 10 символов.';
+        }
         
-        if (themes[0] === 'Недостаточно данных') {
-            return 'Текст слишком короткий для содержательного анализа. Попробуйте описать ситуацию более подробно.';
+        if (themes[0] === 'Недостаточно данных / Другое') {
+            return 'Текст не содержит достаточного количества ключевых слов для определения тем. Попробуйте описать подробнее.';
         }
         
         const mainTheme = themes[0];
         const mainEmotion = emotions[0];
         
-        let summary = `Вы написали о ${mainTheme.toLowerCase()}. `;
+        let summary = `Основная тема: ${mainTheme}. `;
         
-        if (wordCount < 20) {
-            summary += 'Описание довольно краткое, но уже позволяет сделать некоторые выводы. ';
-        } else if (wordCount < 50) {
-            summary += 'Текст содержит достаточное количество деталей для анализа. ';
-        } else {
-            summary += 'Детальное описание позволяет провести комплексный анализ ситуации. ';
+        if (mainEmotion !== 'Не определено' && mainEmotion !== 'Текст слишком короткий') {
+            summary += `Преобладающая эмоция: ${mainEmotion.toLowerCase()}. `;
         }
         
-        if (mainEmotion !== 'Не определено') {
-            summary += `Основной эмоциональный фон: ${mainEmotion.toLowerCase()}.`;
+        const wordCount = text.trim().split(/\s+/).length;
+        if (wordCount < 20) {
+            summary += 'Описание краткое, но уже позволяет сделать некоторые выводы.';
+        } else if (wordCount < 50) {
+            summary += 'Текст содержит достаточно деталей для анализа.';
+        } else {
+            summary += 'Подробное описание позволяет провести глубокий анализ.';
         }
         
         return summary;
     },
 
-    // Основной анализ
     analyze: (text) => {
         const trimmedText = text.trim();
         
@@ -230,7 +342,6 @@ const TextAnalyzer = {
         const recommendation = TextAnalyzer.generateRecommendation(emotions);
         const summary = TextAnalyzer.generateSummary(trimmedText, themes, emotions);
         
-        // Подсчёт статистики
         const sentences = trimmedText.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
         const words = trimmedText.split(/\s+/).filter(w => w.length > 0).length;
         
@@ -306,27 +417,50 @@ const EntryManager = {
 
     exportToJSON: () => {
         const entries = EntryManager.getAll();
+        const userDict = UserDictionary.get();
         const exportData = {
             app: 'TRACE v0',
             version: APP_CONFIG.VERSION,
             exportedAt: new Date().toISOString(),
-            entries: entries
+            entries: entries,
+            userDictionary: userDict
         };
         return JSON.stringify(exportData, null, 2);
     },
 
+    importFromJSON: (jsonData) => {
+        try {
+            const data = JSON.parse(jsonData);
+            if (data.entries && Array.isArray(data.entries)) {
+                EntryManager.saveAll(data.entries);
+            }
+            if (data.userDictionary) {
+                localStorage.setItem(APP_CONFIG.USER_DICT_KEY, JSON.stringify(data.userDictionary));
+            }
+            return true;
+        } catch (error) {
+            console.error('Ошибка импорта:', error);
+            return false;
+        }
+    },
+
     getStats: () => {
         const entries = EntryManager.getAll();
+        const userDict = UserDictionary.get();
         return {
-            total: entries.length,
-            lastEntry: entries.length > 0 ? entries[entries.length - 1].date : null,
-            storageUsed: JSON.stringify(entries).length
+            totalEntries: entries.length,
+            totalThemes: Object.keys(userDict.themes || {}).length,
+            totalEmotions: Object.keys(userDict.emotions || {}).length,
+            lastEntry: entries.length > 0 ? entries[entries.length - 1].date : null
         };
     }
 };
 
 // UI Manager
 const UIManager = {
+    currentAnalysis: null,
+    currentText: '',
+
     init: () => {
         UIManager.updateDateTime();
         setInterval(UIManager.updateDateTime, 60000);
@@ -337,6 +471,7 @@ const UIManager = {
         UIManager.loadHistory();
         UIManager.updateStorageInfo();
         UIManager.setupEventListeners();
+        UIManager.renderCorrectionControls();
     },
 
     updateDateTime: () => {
@@ -390,7 +525,7 @@ const UIManager = {
                         <div class="history-item-date">${formattedDate}</div>
                         <div class="history-item-preview">${preview}</div>
                     </div>
-                    ${themes.length > 0 && themes[0] !== 'Недостаточно данных' ? `
+                    ${themes.length > 0 && themes[0] !== 'Текст слишком короткий' && themes[0] !== 'Недостаточно данных / Другое' ? `
                         <div class="history-item-themes">
                             ${themes.map(theme => `<span>${theme}</span>`).join('')}
                         </div>
@@ -457,11 +592,11 @@ const UIManager = {
         const stats = EntryManager.getStats();
         const storageInfo = document.getElementById('storageInfo');
         
-        if (stats.total === 0) {
+        if (stats.totalEntries === 0) {
             storageInfo.textContent = 'Нет сохранённых записей';
         } else {
             const lastDate = new Date(stats.lastEntry).toLocaleDateString('ru-RU');
-            storageInfo.textContent = `${stats.total} записей, последняя: ${lastDate}`;
+            storageInfo.textContent = `${stats.totalEntries} записей, ${stats.totalThemes} тем, ${stats.totalEmotions} эмоций`;
         }
     },
 
@@ -473,7 +608,51 @@ const UIManager = {
         document.getElementById(screenId).classList.add('active');
     },
 
-    showAnalysis: (analysis) => {
+    renderCorrectionControls: () => {
+        const analysisResult = document.getElementById('analysisResult');
+        if (!analysisResult.querySelector('.correction-controls')) {
+            const correctionHTML = `
+                <div class="correction-controls">
+                    <div class="correction-section">
+                        <h4>Исправить анализ</h4>
+                        <div class="correction-actions">
+                            <button id="fixThemeBtn" class="btn text small">🎯 Тема неверна</button>
+                            <button id="fixEmotionBtn" class="btn text small">😊 Эмоция неверна</button>
+                        </div>
+                        <div id="themeCorrection" class="correction-form hidden">
+                            <select id="themeSelect" class="correction-select">
+                                <option value="">Выберите тему...</option>
+                                ${Object.keys(AnalysisRules.themes).map(theme => 
+                                    `<option value="${theme}">${theme}</option>`
+                                ).join('')}
+                                <option value="Другое">Другое</option>
+                            </select>
+                            <button id="saveThemeCorrection" class="btn primary small">Сохранить исправление</button>
+                        </div>
+                        <div id="emotionCorrection" class="correction-form hidden">
+                            <select id="emotionSelect" class="correction-select">
+                                <option value="">Выберите эмоцию...</option>
+                                ${Object.keys(AnalysisRules.emotions).map(emotion => 
+                                    `<option value="${emotion}">${emotion}</option>`
+                                ).join('')}
+                            </select>
+                            <button id="saveEmotionCorrection" class="btn primary small">Сохранить исправление</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const analysisHeader = analysisResult.querySelector('h3');
+            if (analysisHeader) {
+                analysisHeader.insertAdjacentHTML('afterend', correctionHTML);
+            }
+        }
+    },
+
+    showAnalysis: (analysis, text) => {
+        UIManager.currentAnalysis = analysis;
+        UIManager.currentText = text;
+        
         const resultDiv = document.getElementById('analysisResult');
         
         document.getElementById('summaryText').textContent = analysis.summary;
@@ -497,6 +676,58 @@ const UIManager = {
         
         resultDiv.classList.remove('hidden');
         resultDiv.scrollIntoView({ behavior: 'smooth' });
+        
+        UIManager.setupCorrectionListeners();
+    },
+
+    setupCorrectionListeners: () => {
+        document.getElementById('fixThemeBtn').addEventListener('click', () => {
+            document.getElementById('themeCorrection').classList.remove('hidden');
+            document.getElementById('emotionCorrection').classList.add('hidden');
+        });
+        
+        document.getElementById('fixEmotionBtn').addEventListener('click', () => {
+            document.getElementById('emotionCorrection').classList.remove('hidden');
+            document.getElementById('themeCorrection').classList.add('hidden');
+        });
+        
+        document.getElementById('saveThemeCorrection').addEventListener('click', () => {
+            const selectedTheme = document.getElementById('themeSelect').value;
+            if (!selectedTheme) {
+                alert('Выберите тему для исправления');
+                return;
+            }
+            
+            const keywords = TextAnalyzer.extractKeywords(UIManager.currentText);
+            keywords.forEach(word => {
+                UserDictionary.addThemeWord(selectedTheme, word);
+            });
+            
+            alert(`Тема исправлена на "${selectedTheme}". Слова добавлены в ваш словарь.`);
+            document.getElementById('themeCorrection').classList.add('hidden');
+            
+            const newAnalysis = TextAnalyzer.analyze(UIManager.currentText);
+            UIManager.showAnalysis(newAnalysis, UIManager.currentText);
+        });
+        
+        document.getElementById('saveEmotionCorrection').addEventListener('click', () => {
+            const selectedEmotion = document.getElementById('emotionSelect').value;
+            if (!selectedEmotion) {
+                alert('Выберите эмоцию для исправления');
+                return;
+            }
+            
+            const keywords = TextAnalyzer.extractKeywords(UIManager.currentText);
+            keywords.forEach(word => {
+                UserDictionary.addEmotionWord(selectedEmotion, word);
+            });
+            
+            alert(`Эмоция исправлена на "${selectedEmotion}". Слова добавлены в ваш словарь.`);
+            document.getElementById('emotionCorrection').classList.add('hidden');
+            
+            const newAnalysis = TextAnalyzer.analyze(UIManager.currentText);
+            UIManager.showAnalysis(newAnalysis, UIManager.currentText);
+        });
     },
 
     setupEventListeners: () => {
@@ -537,7 +768,7 @@ const UIManager = {
             
             setTimeout(() => {
                 const analysis = TextAnalyzer.analyze(text);
-                UIManager.showAnalysis(analysis);
+                UIManager.showAnalysis(analysis, text);
                 
                 analyzeBtn.textContent = originalText;
                 analyzeBtn.disabled = false;
