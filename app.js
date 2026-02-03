@@ -137,7 +137,6 @@ const UserDictionary = {
         return true;
     },
 
-    // Объединение базовых и пользовательских словарей
     getCombinedThemes: () => {
         const base = AnalysisRules.themes;
         const user = UserDictionary.get().themes;
@@ -456,51 +455,147 @@ const EntryManager = {
     }
 };
 
+// Toast-уведомления
+const ToastManager = {
+    show: (message, type = 'info', duration = 3000) => {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+        
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        
+        container.appendChild(toast);
+        
+        // Удаляем toast после анимации
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        container.removeChild(toast);
+                    }
+                }, 300);
+            }
+        }, duration);
+    }
+};
+
 // UI Manager
 const UIManager = {
     currentAnalysis: null,
     currentText: '',
+    isReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
 
     init: () => {
+        // Обновление даты и времени
         UIManager.updateDateTime();
         setInterval(UIManager.updateDateTime, 60000);
         
+        // Инициализация элементов
         const textarea = document.getElementById('entryText');
-        textarea.addEventListener('input', UIManager.updateCharCount);
+        if (textarea) {
+            textarea.addEventListener('input', UIManager.handleTextareaInput);
+            textarea.addEventListener('focus', () => {
+                textarea.parentElement.classList.add('focused');
+            });
+            textarea.addEventListener('blur', () => {
+                textarea.parentElement.classList.remove('focused');
+            });
+        }
         
+        // Загрузка данных
         UIManager.loadHistory();
         UIManager.updateStorageInfo();
+        
+        // Настройка обработчиков
         UIManager.setupEventListeners();
-        UIManager.renderCorrectionControls();
+        UIManager.setupCorrectionListeners();
+        
+        // Настройка анимаций для пользователей с prefers-reduced-motion
+        if (UIManager.isReducedMotion) {
+            document.documentElement.style.setProperty('--transition-base', '0ms');
+            document.documentElement.style.setProperty('--transition-fast', '0ms');
+            document.documentElement.style.setProperty('--transition-slow', '0ms');
+        }
+        
+        // Инициализация живого фона
+        UIManager.initAmbientBackground();
+    },
+
+    initAmbientBackground: () => {
+        if (UIManager.isReducedMotion) return;
+        
+        const bg = document.getElementById('ambientBg');
+        if (!bg) return;
+        
+        // Плавное изменение градиента
+        let time = 0;
+        const updateBackground = () => {
+            if (!UIManager.isReducedMotion) {
+                time += 0.001;
+                const x = Math.sin(time) * 10;
+                const y = Math.cos(time * 0.7) * 10;
+                const scale = 1 + Math.sin(time * 0.5) * 0.02;
+                
+                bg.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+            }
+            requestAnimationFrame(updateBackground);
+        };
+        
+        // Запускаем только если не включен prefers-reduced-motion
+        if (!UIManager.isReducedMotion) {
+            requestAnimationFrame(updateBackground);
+        }
     },
 
     updateDateTime: () => {
         const now = new Date();
-        const options = {
+        const dateTimeStr = now.toLocaleDateString('ru-RU', {
+            weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric',
-            weekday: 'long',
             hour: '2-digit',
             minute: '2-digit'
-        };
-        document.getElementById('currentDateTime').textContent = 
-            now.toLocaleDateString('ru-RU', options);
+        });
+        
+        const dateTimeElement = document.getElementById('currentDateTime');
+        if (dateTimeElement) {
+            dateTimeElement.textContent = dateTimeStr;
+        }
     },
 
-    updateCharCount: () => {
-        const textarea = document.getElementById('entryText');
+    handleTextareaInput: (e) => {
+        const textarea = e.target;
         const count = textarea.value.length;
-        document.getElementById('charCount').textContent = 
-            `${count} символов`;
+        const charCountElement = document.getElementById('charCount');
+        
+        if (charCountElement) {
+            charCountElement.textContent = `${count} символов`;
+            
+            // Динамическое изменение высоты textarea
+            textarea.style.height = 'auto';
+            const newHeight = Math.min(Math.max(textarea.scrollHeight, 160), 400);
+            textarea.style.height = `${newHeight}px`;
+        }
     },
 
     loadHistory: () => {
         const entries = EntryManager.getAll();
         const historyList = document.getElementById('historyList');
         
+        if (!historyList) return;
+        
         if (entries.length === 0) {
-            historyList.innerHTML = '<div class="empty-state">📝 Записей пока нет</div>';
+            historyList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📝</div>
+                    <h3 class="empty-state-title">Записей пока нет</h3>
+                    <p class="empty-state-text">Начните с новой записи</p>
+                </div>
+            `;
             return;
         }
         
@@ -534,10 +629,13 @@ const UIManager = {
             `;
         }).join('');
         
+        // Добавляем обработчики кликов
         document.querySelectorAll('.history-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const entryId = item.dataset.id;
-                UIManager.showEntry(entryId);
+            item.addEventListener('click', (e) => {
+                if (!e.target.closest('button')) {
+                    const entryId = item.dataset.id;
+                    UIManager.showEntry(entryId);
+                }
             });
         });
     },
@@ -592,11 +690,12 @@ const UIManager = {
         const stats = EntryManager.getStats();
         const storageInfo = document.getElementById('storageInfo');
         
-        if (stats.totalEntries === 0) {
-            storageInfo.textContent = 'Нет сохранённых записей';
-        } else {
-            const lastDate = new Date(stats.lastEntry).toLocaleDateString('ru-RU');
-            storageInfo.textContent = `${stats.totalEntries} записей, ${stats.totalThemes} тем, ${stats.totalEmotions} эмоций`;
+        if (storageInfo) {
+            if (stats.totalEntries === 0) {
+                storageInfo.textContent = 'Нет сохранённых записей';
+            } else {
+                storageInfo.textContent = `${stats.totalEntries} записей · ${stats.totalThemes} тем · ${stats.totalEmotions} эмоций`;
+            }
         }
     },
 
@@ -605,48 +704,13 @@ const UIManager = {
             screen.classList.remove('active');
         });
         
-        document.getElementById(screenId).classList.add('active');
-    },
-
-    renderCorrectionControls: () => {
-        const analysisResult = document.getElementById('analysisResult');
-        if (!analysisResult.querySelector('.correction-controls')) {
-            const correctionHTML = `
-                <div class="correction-controls">
-                    <div class="correction-section">
-                        <h4>Исправить анализ</h4>
-                        <div class="correction-actions">
-                            <button id="fixThemeBtn" class="btn text small">🎯 Тема неверна</button>
-                            <button id="fixEmotionBtn" class="btn text small">😊 Эмоция неверна</button>
-                        </div>
-                        <div id="themeCorrection" class="correction-form hidden">
-                            <select id="themeSelect" class="correction-select">
-                                <option value="">Выберите тему...</option>
-                                ${Object.keys(AnalysisRules.themes).map(theme => 
-                                    `<option value="${theme}">${theme}</option>`
-                                ).join('')}
-                                <option value="Другое">Другое</option>
-                            </select>
-                            <button id="saveThemeCorrection" class="btn primary small">Сохранить исправление</button>
-                        </div>
-                        <div id="emotionCorrection" class="correction-form hidden">
-                            <select id="emotionSelect" class="correction-select">
-                                <option value="">Выберите эмоцию...</option>
-                                ${Object.keys(AnalysisRules.emotions).map(emotion => 
-                                    `<option value="${emotion}">${emotion}</option>`
-                                ).join('')}
-                            </select>
-                            <button id="saveEmotionCorrection" class="btn primary small">Сохранить исправление</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            const analysisHeader = analysisResult.querySelector('h3');
-            if (analysisHeader) {
-                analysisHeader.insertAdjacentHTML('afterend', correctionHTML);
-            }
+        const targetScreen = document.getElementById(screenId);
+        if (targetScreen) {
+            targetScreen.classList.add('active');
         }
+        
+        // Прокрутка наверх при смене экрана
+        window.scrollTo({ top: 0, behavior: UIManager.isReducedMotion ? 'auto' : 'smooth' });
     },
 
     showAnalysis: (analysis, text) => {
@@ -654,7 +718,19 @@ const UIManager = {
         UIManager.currentText = text;
         
         const resultDiv = document.getElementById('analysisResult');
+        if (!resultDiv) return;
         
+        // Обновляем время анализа
+        const analysisTime = document.getElementById('analysisTime');
+        if (analysisTime) {
+            const now = new Date();
+            analysisTime.textContent = now.toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // Обновляем контент
         document.getElementById('summaryText').textContent = analysis.summary;
         document.getElementById('questionText').textContent = analysis.question;
         document.getElementById('recommendationText').textContent = 
@@ -674,151 +750,274 @@ const UIManager = {
             .map(emotion => `<span>${emotion}</span>`)
             .join('');
         
+        // Показываем блок анализа
         resultDiv.classList.remove('hidden');
-        resultDiv.scrollIntoView({ behavior: 'smooth' });
         
-        UIManager.setupCorrectionListeners();
+        // Плавная прокрутка к результатам
+        if (!UIManager.isReducedMotion) {
+            setTimeout(() => {
+                resultDiv.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'nearest' 
+                });
+            }, 100);
+        }
     },
 
     setupCorrectionListeners: () => {
-        document.getElementById('fixThemeBtn').addEventListener('click', () => {
-            document.getElementById('themeCorrection').classList.remove('hidden');
-            document.getElementById('emotionCorrection').classList.add('hidden');
-        });
+        const fixThemeBtn = document.getElementById('fixThemeBtn');
+        const fixEmotionBtn = document.getElementById('fixEmotionBtn');
+        const saveThemeBtn = document.getElementById('saveThemeCorrection');
+        const saveEmotionBtn = document.getElementById('saveEmotionCorrection');
         
-        document.getElementById('fixEmotionBtn').addEventListener('click', () => {
-            document.getElementById('emotionCorrection').classList.remove('hidden');
-            document.getElementById('themeCorrection').classList.add('hidden');
-        });
-        
-        document.getElementById('saveThemeCorrection').addEventListener('click', () => {
-            const selectedTheme = document.getElementById('themeSelect').value;
-            if (!selectedTheme) {
-                alert('Выберите тему для исправления');
-                return;
-            }
-            
-            const keywords = TextAnalyzer.extractKeywords(UIManager.currentText);
-            keywords.forEach(word => {
-                UserDictionary.addThemeWord(selectedTheme, word);
+        if (fixThemeBtn) {
+            fixThemeBtn.addEventListener('click', () => {
+                document.getElementById('themeCorrection').classList.remove('hidden');
+                document.getElementById('emotionCorrection').classList.add('hidden');
             });
-            
-            alert(`Тема исправлена на "${selectedTheme}". Слова добавлены в ваш словарь.`);
-            document.getElementById('themeCorrection').classList.add('hidden');
-            
-            const newAnalysis = TextAnalyzer.analyze(UIManager.currentText);
-            UIManager.showAnalysis(newAnalysis, UIManager.currentText);
-        });
+        }
         
-        document.getElementById('saveEmotionCorrection').addEventListener('click', () => {
-            const selectedEmotion = document.getElementById('emotionSelect').value;
-            if (!selectedEmotion) {
-                alert('Выберите эмоцию для исправления');
-                return;
-            }
-            
-            const keywords = TextAnalyzer.extractKeywords(UIManager.currentText);
-            keywords.forEach(word => {
-                UserDictionary.addEmotionWord(selectedEmotion, word);
+        if (fixEmotionBtn) {
+            fixEmotionBtn.addEventListener('click', () => {
+                document.getElementById('emotionCorrection').classList.remove('hidden');
+                document.getElementById('themeCorrection').classList.add('hidden');
             });
-            
-            alert(`Эмоция исправлена на "${selectedEmotion}". Слова добавлены в ваш словарь.`);
-            document.getElementById('emotionCorrection').classList.add('hidden');
-            
-            const newAnalysis = TextAnalyzer.analyze(UIManager.currentText);
-            UIManager.showAnalysis(newAnalysis, UIManager.currentText);
-        });
+        }
+        
+        if (saveThemeBtn) {
+            saveThemeBtn.addEventListener('click', () => {
+                const selectedTheme = document.getElementById('themeSelect').value;
+                if (!selectedTheme) {
+                    ToastManager.show('Выберите тему для исправления', 'error');
+                    return;
+                }
+                
+                const keywords = TextAnalyzer.extractKeywords(UIManager.currentText);
+                keywords.forEach(word => {
+                    UserDictionary.addThemeWord(selectedTheme, word);
+                });
+                
+                ToastManager.show(`Тема исправлена на "${selectedTheme}"`, 'success');
+                document.getElementById('themeCorrection').classList.add('hidden');
+                
+                const newAnalysis = TextAnalyzer.analyze(UIManager.currentText);
+                UIManager.showAnalysis(newAnalysis, UIManager.currentText);
+            });
+        }
+        
+        if (saveEmotionBtn) {
+            saveEmotionBtn.addEventListener('click', () => {
+                const selectedEmotion = document.getElementById('emotionSelect').value;
+                if (!selectedEmotion) {
+                    ToastManager.show('Выберите эмоцию для исправления', 'error');
+                    return;
+                }
+                
+                const keywords = TextAnalyzer.extractKeywords(UIManager.currentText);
+                keywords.forEach(word => {
+                    UserDictionary.addEmotionWord(selectedEmotion, word);
+                });
+                
+                ToastManager.show(`Эмоция исправлена на "${selectedEmotion}"`, 'success');
+                document.getElementById('emotionCorrection').classList.add('hidden');
+                
+                const newAnalysis = TextAnalyzer.analyze(UIManager.currentText);
+                UIManager.showAnalysis(newAnalysis, UIManager.currentText);
+            });
+        }
     },
 
     setupEventListeners: () => {
-        document.getElementById('saveBtn').addEventListener('click', () => {
-            const text = document.getElementById('entryText').value.trim();
-            
-            if (!text) {
-                alert('Пожалуйста, введите текст записи');
-                return;
-            }
-            
-            const analysis = TextAnalyzer.analyze(text);
-            const saved = EntryManager.add(text, analysis);
-            
-            if (saved) {
-                alert('Запись успешно сохранена!');
-                document.getElementById('entryText').value = '';
-                UIManager.updateCharCount();
-                UIManager.loadHistory();
-                UIManager.updateStorageInfo();
-            } else {
-                alert('Ошибка при сохранении записи');
-            }
-        });
-
-        document.getElementById('analyzeBtn').addEventListener('click', () => {
-            const text = document.getElementById('entryText').value.trim();
-            
-            if (!text) {
-                alert('Пожалуйста, введите текст для анализа');
-                return;
-            }
-            
-            const analyzeBtn = document.getElementById('analyzeBtn');
-            const originalText = analyzeBtn.textContent;
-            analyzeBtn.textContent = 'Анализируем...';
-            analyzeBtn.disabled = true;
-            
-            setTimeout(() => {
-                const analysis = TextAnalyzer.analyze(text);
-                UIManager.showAnalysis(analysis, text);
+        // Сохранение записи
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                const text = document.getElementById('entryText').value.trim();
                 
-                analyzeBtn.textContent = originalText;
-                analyzeBtn.disabled = false;
-            }, 800);
-        });
+                if (!text) {
+                    ToastManager.show('Введите текст записи', 'error');
+                    return;
+                }
+                
+                if (text.length < APP_CONFIG.MIN_TEXT_LENGTH) {
+                    ToastManager.show(`Минимальная длина записи: ${APP_CONFIG.MIN_TEXT_LENGTH} символов`, 'error');
+                    return;
+                }
+                
+                const analysis = TextAnalyzer.analyze(text);
+                const saved = EntryManager.add(text, analysis);
+                
+                if (saved) {
+                    ToastManager.show('Запись сохранена', 'success');
+                    document.getElementById('entryText').value = '';
+                    document.getElementById('analysisResult').classList.add('hidden');
+                    
+                    // Сброс высоты textarea
+                    const textarea = document.getElementById('entryText');
+                    textarea.style.height = '160px';
+                    
+                    UIManager.updateCharCount();
+                    UIManager.loadHistory();
+                    UIManager.updateStorageInfo();
+                } else {
+                    ToastManager.show('Ошибка при сохранении', 'error');
+                }
+            });
+        }
 
-        document.getElementById('clearBtn').addEventListener('click', () => {
-            if (confirm('Очистить поле ввода?')) {
-                document.getElementById('entryText').value = '';
-                document.getElementById('analysisResult').classList.add('hidden');
-                UIManager.updateCharCount();
+        // Анализ текста
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        if (analyzeBtn) {
+            analyzeBtn.addEventListener('click', () => {
+                const text = document.getElementById('entryText').value.trim();
+                
+                if (!text) {
+                    ToastManager.show('Введите текст для анализа', 'error');
+                    return;
+                }
+                
+                if (text.length < APP_CONFIG.MIN_TEXT_LENGTH) {
+                    ToastManager.show(`Минимальная длина для анализа: ${APP_CONFIG.MIN_TEXT_LENGTH} символов`, 'error');
+                    return;
+                }
+                
+                // Показываем состояние загрузки
+                const originalText = analyzeBtn.innerHTML;
+                analyzeBtn.innerHTML = `
+                    <span class="loading"></span>
+                    Анализируем...
+                `;
+                analyzeBtn.disabled = true;
+                
+                // Имитация задержки для UX
+                setTimeout(() => {
+                    const analysis = TextAnalyzer.analyze(text);
+                    UIManager.showAnalysis(analysis, text);
+                    
+                    // Восстанавливаем кнопку
+                    analyzeBtn.innerHTML = originalText;
+                    analyzeBtn.disabled = false;
+                }, 800);
+            });
+        }
+
+        // Очистка поля
+        const clearBtn = document.getElementById('clearBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                const textarea = document.getElementById('entryText');
+                if (textarea.value.trim()) {
+                    if (confirm('Очистить поле ввода?')) {
+                        textarea.value = '';
+                        textarea.style.height = '160px';
+                        document.getElementById('analysisResult').classList.add('hidden');
+                        UIManager.updateCharCount();
+                        ToastManager.show('Поле очищено', 'info');
+                    }
+                }
+            });
+        }
+
+        // Навигация
+        const historyBtn = document.getElementById('historyBtn');
+        if (historyBtn) {
+            historyBtn.addEventListener('click', () => {
+                UIManager.loadHistory();
+                UIManager.switchScreen('historyScreen');
+            });
+        }
+
+        const backBtn = document.getElementById('backBtn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                UIManager.switchScreen('newEntryScreen');
+            });
+        }
+
+        const backFromViewBtn = document.getElementById('backFromViewBtn');
+        if (backFromViewBtn) {
+            backFromViewBtn.addEventListener('click', () => {
+                UIManager.switchScreen('historyScreen');
+            });
+        }
+
+        // Экспорт JSON
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                const jsonData = EntryManager.exportToJSON();
+                const blob = new Blob([jsonData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `trace_export_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                ToastManager.show('Данные экспортированы', 'success');
+            });
+        }
+
+        // Импорт данных (скрытая функция для разработки)
+        const handleImport = (event) => {
+            if (event.ctrlKey && event.shiftKey && event.key === 'I') {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const success = EntryManager.importFromJSON(e.target.result);
+                        if (success) {
+                            ToastManager.show('Данные импортированы', 'success');
+                            UIManager.loadHistory();
+                            UIManager.updateStorageInfo();
+                        } else {
+                            ToastManager.show('Ошибка импорта', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                
+                input.click();
             }
-        });
+        };
+        
+        document.addEventListener('keydown', handleImport);
+    },
 
-        document.getElementById('historyBtn').addEventListener('click', () => {
-            UIManager.loadHistory();
-            UIManager.switchScreen('historyScreen');
-        });
-
-        document.getElementById('backBtn').addEventListener('click', () => {
-            UIManager.switchScreen('newEntryScreen');
-        });
-
-        document.getElementById('backFromViewBtn').addEventListener('click', () => {
-            UIManager.switchScreen('historyScreen');
-        });
-
-        document.getElementById('exportBtn').addEventListener('click', () => {
-            const jsonData = EntryManager.exportToJSON();
-            const blob = new Blob([jsonData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `trace_export_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            alert('Данные успешно экспортированы в JSON файл');
-        });
+    updateCharCount: () => {
+        const textarea = document.getElementById('entryText');
+        const count = textarea ? textarea.value.length : 0;
+        const charCountElement = document.getElementById('charCount');
+        
+        if (charCountElement) {
+            charCountElement.textContent = `${count} символов`;
+        }
     }
 };
 
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', () => {
-    UIManager.init();
-    
-    if ('serviceWorker' in navigator && 'BeforeInstallPromptEvent' in window) {
-        console.log('PWA готово к установке');
+    // Проверяем, есть ли уже установленный PWA
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('Приложение запущено в режиме PWA');
     }
+    
+    // Проверяем поддержку Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(() => {
+            console.log('Service Worker готов');
+        });
+    }
+    
+    // Инициализация UI
+    UIManager.init();
 });
