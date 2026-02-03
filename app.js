@@ -5,89 +5,234 @@ const APP_CONFIG = {
     MAX_ENTRIES: 100
 };
 
-// Мок-анализатор текста
-const MockAnalyzer = {
-    // Генерация случайных тем
-    generateThemes: (text) => {
-        const themes = [
-            ['Работа', 'Проекты', 'Сроки', 'Коллеги', 'Карьера'],
-            ['Отношения', 'Семья', 'Друзья', 'Общение', 'Конфликт'],
-            ['Здоровье', 'Сон', 'Питание', 'Спорт', 'Энергия'],
-            ['Финансы', 'Бюджет', 'Инвестиции', 'Расходы', 'Сбережения'],
-            ['Развитие', 'Обучение', 'Навыки', 'Цели', 'Привычки'],
-            ['Творчество', 'Идеи', 'Вдохновение', 'Проекты', 'Реализация']
-        ];
+// Словари для анализа
+const AnalysisRules = {
+    // Категории тем и их ключевые слова
+    themes: {
+        'Дом / Быт': ['дом', 'быт', 'уборка', 'ремонт', 'квартира', 'комната', 'кухня', 'мебель', 'техника', 'интерьер', 'порядок', 'хаос', 'чистота', 'грязь'],
+        'Животные': ['собака', 'кот', 'кошка', 'питомец', 'животное', 'зверь', 'пёс', 'котёнок', 'щенок', 'аквариум', 'птица', 'хомяк', 'кролик', 'рыбка'],
+        'Радость / Позитив': ['радость', 'счастье', 'рад', 'доволен', 'ура', 'восторг', 'веселье', 'праздник', 'успех', 'победа', 'отлично', 'прекрасно', 'замечательно', 'класс'],
+        'Отношения': ['друг', 'подруга', 'парень', 'девушка', 'муж', 'жена', 'семья', 'родители', 'дети', 'ребёнок', 'отношения', 'любовь', 'ссора', 'примирение', 'общение'],
+        'Работа': ['работа', 'офис', 'начальник', 'коллега', 'зарплата', 'должность', 'карьера', 'увольнение', 'приём', 'совещание', 'отчёт', 'план', 'задание', 'обязанности'],
+        'Проекты': ['проект', 'задача', 'дедлайн', 'срок', 'клиент', 'заказчик', 'разработка', 'внедрение', 'запуск', 'тестирование', 'планирование', 'реализация', 'итерация'],
+        'Финансы': ['деньги', 'финансы', 'бюджет', 'доход', 'расход', 'зарплата', 'премия', 'кредит', 'долг', 'экономия', 'инвестиция', 'сбережения', 'покупка', 'продажа'],
+        'Здоровье': ['здоровье', 'болезнь', 'лекарство', 'врач', 'больница', 'симптом', 'диета', 'спорт', 'тренировка', 'бег', 'йога', 'питание', 'витамины', 'давление'],
+        'Развитие': ['развитие', 'обучение', 'курс', 'книга', 'саморазвитие', 'навык', 'знание', 'образование', 'университет', 'школа', 'экзамен', 'диплом', 'практика', 'опыт'],
+        'Творчество': ['творчество', 'искусство', 'рисование', 'музыка', 'танец', 'пение', 'писательство', 'поэзия', 'вдохновение', 'креатив', 'идея', 'хобби', 'рукоделие']
+    },
+
+    // Эмоции и их ключевые слова
+    emotions: {
+        'Радость': ['радость', 'счастье', 'восторг', 'веселье', 'удовольствие', 'ликование', 'эйфория', 'праздник', 'ура'],
+        'Спокойствие': ['спокойствие', 'умиротворение', 'гармония', 'баланс', 'расслабление', 'отдых', 'релакс', 'мир', 'тишина', 'покой'],
+        'Тревога': ['тревога', 'беспокойство', 'опасение', 'страх', 'испуг', 'паника', 'нервозность', 'волнение', 'стресс'],
+        'Грусть': ['грусть', 'печаль', 'тоска', 'уныние', 'разочарование', 'сожаление', 'одиночество', 'скука', 'меланхолия'],
+        'Злость': ['злость', 'гнев', 'ярость', 'раздражение', 'негодование', 'возмущение', 'злоба', 'ненависть', 'обида'],
+        'Вдохновение': ['вдохновение', 'энтузиазм', 'подъём', 'идея', 'творческий', 'озарение', 'поток', 'замысел', 'креатив']
+    },
+
+    // Вопросы в зависимости от тем
+    questions: {
+        'Дом / Быт': 'Что бы вы хотели изменить в вашем домашнем пространстве?',
+        'Животные': 'Как ваш питомец влияет на ваше настроение?',
+        'Радость / Позитив': 'Что именно вызвало у вас такие позитивные эмоции?',
+        'Отношения': 'Как это повлияло на ваши отношения с человеком?',
+        'Работа': 'Что самое важное в этой рабочей ситуации?',
+        'Проекты': 'Какой следующий шаг в вашем проекте будет самым важным?',
+        'Финансы': 'Как это решение повлияет на ваш бюджет в долгосрочной перспективе?',
+        'Здоровье': 'Что вы можете сделать для улучшения вашего здоровья уже на этой неделе?',
+        'Развитие': 'Чему конкретно вы хотите научиться в ближайшее время?',
+        'Творчество': 'Что вас вдохновляет на творчество в последнее время?',
+        'default': 'Что для вас самое важное в этой ситуации?'
+    },
+
+    // Рекомендации в зависимости от эмоций
+    recommendations: {
+        'Радость': {
+            type: 'do',
+            label: 'Действовать',
+            text: 'Эмоциональный фон благоприятный. Вы в хорошем настроении, это подходящее время для активных действий.'
+        },
+        'Спокойствие': {
+            type: 'wait',
+            label: 'Подождать',
+            text: 'Ситуация стабильна, нет срочности. Можно подождать, собрать больше информации и принять взвешенное решение.'
+        },
+        'Тревога': {
+            type: 'dont',
+            label: 'Не действовать',
+            text: 'Вы испытываете тревогу. В таком состоянии решения могут быть неоптимальными. Лучше успокоиться и вернуться к вопросу позже.'
+        },
+        'Грусть': {
+            type: 'wait',
+            label: 'Подождать',
+            text: 'Эмоциональное состояние снижено. Дайте себе время на восстановление сил перед принятием важных решений.'
+        },
+        'Злость': {
+            type: 'dont',
+            label: 'Не действовать',
+            text: 'Сильные эмоции могут помешать объективной оценке. Отложите решение до того момента, когда эмоции улягутся.'
+        },
+        'Вдохновение': {
+            type: 'do',
+            label: 'Действовать',
+            text: 'Вдохновение — отличный двигатель. Используйте этот подъём энергии для реализации замыслов.'
+        },
+        'default': {
+            type: 'wait',
+            label: 'Подождать',
+            text: 'Недостаточно данных для точной рекомендации. Рекомендуется собрать больше информации.'
+        }
+    }
+};
+
+// Анализатор текста
+const TextAnalyzer = {
+    // Нормализация текста
+    normalizeText: (text) => {
+        return text.toLowerCase()
+            .replace(/[^\wа-яё\s]/gi, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    },
+
+    // Поиск ключевых слов в тексте
+    findKeywords: (text, keywordLists) => {
+        const normalizedText = TextAnalyzer.normalizeText(text);
+        const words = normalizedText.split(' ');
+        const foundKeywords = {};
         
-        const randomThemes = themes[Math.floor(Math.random() * themes.length)];
-        return randomThemes.slice(0, 3 + Math.floor(Math.random() * 4));
+        for (const [category, keywords] of Object.entries(keywordLists)) {
+            let count = 0;
+            for (const keyword of keywords) {
+                if (normalizedText.includes(keyword.toLowerCase())) {
+                    count++;
+                }
+            }
+            if (count > 0) {
+                foundKeywords[category] = count;
+            }
+        }
+        
+        return foundKeywords;
     },
 
-    // Генерация случайных эмоций
-    generateEmotions: () => {
-        const emotions = [
-            ['😊 Радость', '😌 Спокойствие', '🙂 Удовлетворение'],
-            ['🤔 Задумчивость', '😐 Нейтральность', '😶 Созерцание'],
-            ['😟 Беспокойство', '😰 Тревога', '😔 Грусть'],
-            ['😠 Раздражение', '😤 Нетерпение', '😑 Разочарование'],
-            ['😃 Восторг', '🤩 Вдохновение', '🎯 Сфокусированность']
-        ];
-        return emotions[Math.floor(Math.random() * emotions.length)];
+    // Определение тем
+    detectThemes: (text) => {
+        const themeMatches = TextAnalyzer.findKeywords(text, AnalysisRules.themes);
+        const themes = Object.keys(themeMatches);
+        
+        if (themes.length === 0) {
+            return ['Недостаточно данных'];
+        }
+        
+        // Сортируем темы по количеству совпадений
+        return themes.sort((a, b) => themeMatches[b] - themeMatches[a]);
     },
 
-    // Генерация случайного вопроса
-    generateQuestion: () => {
-        const questions = [
-            "Что самое важное в этой ситуации для вас?",
-            "Как бы вы поступили, если бы страх не был фактором?",
-            "Что говорит ваша интуиция по этому поводу?",
-            "Как это соотносится с вашими долгосрочными целями?",
-            "Что вы можете контролировать в этой ситуации?",
-            "Чему вы можете научиться из этого опыта?",
-            "Что было бы идеальным исходом?"
-        ];
-        return questions[Math.floor(Math.random() * questions.length)];
+    // Определение эмоций
+    detectEmotions: (text) => {
+        const emotionMatches = TextAnalyzer.findKeywords(text, AnalysisRules.emotions);
+        const emotions = Object.keys(emotionMatches);
+        
+        if (emotions.length === 0) {
+            return ['Не определено'];
+        }
+        
+        // Сортируем эмоции по количеству совпадений
+        return emotions.sort((a, b) => emotionMatches[b] - emotionMatches[a]);
+    },
+
+    // Генерация уточняющего вопроса
+    generateQuestion: (themes) => {
+        if (themes[0] === 'Недостаточно данных') {
+            return AnalysisRules.questions.default;
+        }
+        
+        for (const theme of themes) {
+            if (AnalysisRules.questions[theme]) {
+                return AnalysisRules.questions[theme];
+            }
+        }
+        
+        return AnalysisRules.questions.default;
     },
 
     // Генерация рекомендации
-    generateRecommendation: () => {
-        const recommendations = [
-            {
-                type: 'do',
-                text: 'Действуйте. Ситуация благоприятна, риски минимальны. Это хорошая возможность для прогресса.',
-                label: 'Действовать'
-            },
-            {
-                type: 'wait',
-                text: 'Подождите. Соберите больше информации, дайте ситуации развиться. Поспешные действия могут быть неоптимальными.',
-                label: 'Подождать'
-            },
-            {
-                type: 'dont',
-                text: 'Воздержитесь. Текущие условия неблагоприятны, лучше рассмотреть альтернативные варианты.',
-                label: 'Не действовать'
-            }
-        ];
-        return recommendations[Math.floor(Math.random() * recommendations.length)];
-    },
-
-    // Основной анализ текста
-    analyze: (text) => {
-        const words = text.trim().split(/\s+/).length;
-        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
-        
-        let summary = '';
-        if (words < 10) {
-            summary = 'Краткая запись. Рекомендуется добавить больше деталей для глубокого анализа.';
-        } else if (words < 30) {
-            summary = 'Умеренное описание ситуации. Позволяет сделать базовые выводы.';
-        } else {
-            summary = 'Детальное описание. Хорошая основа для комплексного анализа ситуации.';
+    generateRecommendation: (emotions) => {
+        if (emotions[0] === 'Не определено') {
+            return AnalysisRules.recommendations.default;
         }
         
-        const themes = MockAnalyzer.generateThemes(text);
-        const emotions = MockAnalyzer.generateEmotions();
-        const question = MockAnalyzer.generateQuestion();
-        const recommendation = MockAnalyzer.generateRecommendation();
+        for (const emotion of emotions) {
+            if (AnalysisRules.recommendations[emotion]) {
+                return AnalysisRules.recommendations[emotion];
+            }
+        }
+        
+        return AnalysisRules.recommendations.default;
+    },
+
+    // Генерация краткого резюме
+    generateSummary: (text, themes, emotions) => {
+        const wordCount = text.trim().split(/\s+/).length;
+        
+        if (themes[0] === 'Недостаточно данных') {
+            return 'Текст слишком короткий для содержательного анализа. Попробуйте описать ситуацию более подробно.';
+        }
+        
+        const mainTheme = themes[0];
+        const mainEmotion = emotions[0];
+        
+        let summary = `Вы написали о ${mainTheme.toLowerCase()}. `;
+        
+        if (wordCount < 20) {
+            summary += 'Описание довольно краткое, но уже позволяет сделать некоторые выводы. ';
+        } else if (wordCount < 50) {
+            summary += 'Текст содержит достаточное количество деталей для анализа. ';
+        } else {
+            summary += 'Детальное описание позволяет провести комплексный анализ ситуации. ';
+        }
+        
+        if (mainEmotion !== 'Не определено') {
+            summary += `Основной эмоциональный фон: ${mainEmotion.toLowerCase()}.`;
+        }
+        
+        return summary;
+    },
+
+    // Основной анализ
+    analyze: (text) => {
+        const trimmedText = text.trim();
+        
+        if (!trimmedText) {
+            return {
+                summary: 'Введите текст для анализа',
+                themes: ['Ожидание ввода'],
+                emotions: ['Ожидание ввода'],
+                question: 'Что вы хотите проанализировать?',
+                recommendation: {
+                    type: 'wait',
+                    label: 'Ожидание',
+                    text: 'Введите текст для получения рекомендации'
+                },
+                meta: {
+                    words: 0,
+                    sentences: 0,
+                    analyzedAt: new Date().toISOString()
+                }
+            };
+        }
+        
+        const themes = TextAnalyzer.detectThemes(trimmedText);
+        const emotions = TextAnalyzer.detectEmotions(trimmedText);
+        const question = TextAnalyzer.generateQuestion(themes);
+        const recommendation = TextAnalyzer.generateRecommendation(emotions);
+        const summary = TextAnalyzer.generateSummary(trimmedText, themes, emotions);
+        
+        // Подсчёт статистики
+        const sentences = trimmedText.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+        const words = trimmedText.split(/\s+/).filter(w => w.length > 0).length;
         
         return {
             summary,
@@ -106,7 +251,6 @@ const MockAnalyzer = {
 
 // Менеджер записей
 const EntryManager = {
-    // Получение всех записей
     getAll: () => {
         try {
             const data = localStorage.getItem(APP_CONFIG.STORAGE_KEY);
@@ -117,7 +261,6 @@ const EntryManager = {
         }
     },
 
-    // Сохранение всех записей
     saveAll: (entries) => {
         try {
             localStorage.setItem(APP_CONFIG.STORAGE_KEY, JSON.stringify(entries));
@@ -128,12 +271,11 @@ const EntryManager = {
         }
     },
 
-    // Добавление новой записи
     add: (text, analysis) => {
         const entries = EntryManager.getAll();
         
         if (entries.length >= APP_CONFIG.MAX_ENTRIES) {
-            entries.shift(); // Удаляем самую старую запись
+            entries.shift();
         }
         
         const newEntry = {
@@ -151,20 +293,17 @@ const EntryManager = {
         return null;
     },
 
-    // Получение записи по ID
     getById: (id) => {
         const entries = EntryManager.getAll();
         return entries.find(entry => entry.id === id);
     },
 
-    // Удаление записи
     remove: (id) => {
         const entries = EntryManager.getAll();
         const filtered = entries.filter(entry => entry.id !== id);
         return EntryManager.saveAll(filtered);
     },
 
-    // Экспорт в JSON
     exportToJSON: () => {
         const entries = EntryManager.getAll();
         const exportData = {
@@ -176,7 +315,6 @@ const EntryManager = {
         return JSON.stringify(exportData, null, 2);
     },
 
-    // Получение статистики
     getStats: () => {
         const entries = EntryManager.getAll();
         return {
@@ -189,25 +327,18 @@ const EntryManager = {
 
 // UI Manager
 const UIManager = {
-    // Инициализация
     init: () => {
-        // Обновление даты и времени
         UIManager.updateDateTime();
         setInterval(UIManager.updateDateTime, 60000);
         
-        // Инициализация счетчика символов
         const textarea = document.getElementById('entryText');
         textarea.addEventListener('input', UIManager.updateCharCount);
         
-        // Загрузка истории
         UIManager.loadHistory();
         UIManager.updateStorageInfo();
-        
-        // Назначение обработчиков событий
         UIManager.setupEventListeners();
     },
 
-    // Обновление даты и времени
     updateDateTime: () => {
         const now = new Date();
         const options = {
@@ -222,7 +353,6 @@ const UIManager = {
             now.toLocaleDateString('ru-RU', options);
     },
 
-    // Обновление счетчика символов
     updateCharCount: () => {
         const textarea = document.getElementById('entryText');
         const count = textarea.value.length;
@@ -230,7 +360,6 @@ const UIManager = {
             `${count} символов`;
     },
 
-    // Загрузка истории
     loadHistory: () => {
         const entries = EntryManager.getAll();
         const historyList = document.getElementById('historyList');
@@ -261,7 +390,7 @@ const UIManager = {
                         <div class="history-item-date">${formattedDate}</div>
                         <div class="history-item-preview">${preview}</div>
                     </div>
-                    ${themes.length > 0 ? `
+                    ${themes.length > 0 && themes[0] !== 'Недостаточно данных' ? `
                         <div class="history-item-themes">
                             ${themes.map(theme => `<span>${theme}</span>`).join('')}
                         </div>
@@ -270,7 +399,6 @@ const UIManager = {
             `;
         }).join('');
         
-        // Добавление обработчиков кликов на элементы истории
         document.querySelectorAll('.history-item').forEach(item => {
             item.addEventListener('click', () => {
                 const entryId = item.dataset.id;
@@ -279,7 +407,6 @@ const UIManager = {
         });
     },
 
-    // Показать запись
     showEntry: (entryId) => {
         const entry = EntryManager.getById(entryId);
         if (!entry) return;
@@ -312,13 +439,11 @@ const UIManager = {
             typeBadge.textContent = entry.analysis.recommendation.label;
             typeBadge.className = `recommendation-badge ${entry.analysis.recommendation.type}`;
             
-            // Отображение тем
             const themesContainer = document.getElementById('viewThemes');
             themesContainer.innerHTML = entry.analysis.themes
                 .map(theme => `<span>${theme}</span>`)
                 .join('');
             
-            // Отображение эмоций
             const emotionsContainer = document.getElementById('viewEmotions');
             emotionsContainer.innerHTML = entry.analysis.emotions
                 .map(emotion => `<span>${emotion}</span>`)
@@ -328,7 +453,6 @@ const UIManager = {
         UIManager.switchScreen('viewEntryScreen');
     },
 
-    // Обновление информации о хранилище
     updateStorageInfo: () => {
         const stats = EntryManager.getStats();
         const storageInfo = document.getElementById('storageInfo');
@@ -341,7 +465,6 @@ const UIManager = {
         }
     },
 
-    // Переключение экранов
     switchScreen: (screenId) => {
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
@@ -350,7 +473,6 @@ const UIManager = {
         document.getElementById(screenId).classList.add('active');
     },
 
-    // Показать результаты анализа
     showAnalysis: (analysis) => {
         const resultDiv = document.getElementById('analysisResult');
         
@@ -363,13 +485,11 @@ const UIManager = {
         typeBadge.textContent = analysis.recommendation.label;
         typeBadge.className = `recommendation-badge ${analysis.recommendation.type}`;
         
-        // Отображение тем
         const themesContainer = document.getElementById('themesList');
         themesContainer.innerHTML = analysis.themes
             .map(theme => `<span>${theme}</span>`)
             .join('');
         
-        // Отображение эмоций
         const emotionsContainer = document.getElementById('emotionsList');
         emotionsContainer.innerHTML = analysis.emotions
             .map(emotion => `<span>${emotion}</span>`)
@@ -379,9 +499,7 @@ const UIManager = {
         resultDiv.scrollIntoView({ behavior: 'smooth' });
     },
 
-    // Настройка обработчиков событий
     setupEventListeners: () => {
-        // Сохранение записи
         document.getElementById('saveBtn').addEventListener('click', () => {
             const text = document.getElementById('entryText').value.trim();
             
@@ -390,10 +508,7 @@ const UIManager = {
                 return;
             }
             
-            // Создаем мок-анализ
-            const analysis = MockAnalyzer.analyze(text);
-            
-            // Сохраняем запись
+            const analysis = TextAnalyzer.analyze(text);
             const saved = EntryManager.add(text, analysis);
             
             if (saved) {
@@ -407,7 +522,6 @@ const UIManager = {
             }
         });
 
-        // Анализ текста
         document.getElementById('analyzeBtn').addEventListener('click', () => {
             const text = document.getElementById('entryText').value.trim();
             
@@ -416,24 +530,20 @@ const UIManager = {
                 return;
             }
             
-            // Показываем индикатор загрузки
             const analyzeBtn = document.getElementById('analyzeBtn');
             const originalText = analyzeBtn.textContent;
             analyzeBtn.textContent = 'Анализируем...';
             analyzeBtn.disabled = true;
             
-            // Имитация задержки анализа
             setTimeout(() => {
-                const analysis = MockAnalyzer.analyze(text);
+                const analysis = TextAnalyzer.analyze(text);
                 UIManager.showAnalysis(analysis);
                 
-                // Восстанавливаем кнопку
                 analyzeBtn.textContent = originalText;
                 analyzeBtn.disabled = false;
             }, 800);
         });
 
-        // Очистка поля
         document.getElementById('clearBtn').addEventListener('click', () => {
             if (confirm('Очистить поле ввода?')) {
                 document.getElementById('entryText').value = '';
@@ -442,23 +552,19 @@ const UIManager = {
             }
         });
 
-        // Переход к истории
         document.getElementById('historyBtn').addEventListener('click', () => {
             UIManager.loadHistory();
             UIManager.switchScreen('historyScreen');
         });
 
-        // Назад из истории
         document.getElementById('backBtn').addEventListener('click', () => {
             UIManager.switchScreen('newEntryScreen');
         });
 
-        // Назад из просмотра записи
         document.getElementById('backFromViewBtn').addEventListener('click', () => {
             UIManager.switchScreen('historyScreen');
         });
 
-        // Экспорт JSON
         document.getElementById('exportBtn').addEventListener('click', () => {
             const jsonData = EntryManager.exportToJSON();
             const blob = new Blob([jsonData], { type: 'application/json' });
@@ -481,7 +587,6 @@ const UIManager = {
 document.addEventListener('DOMContentLoaded', () => {
     UIManager.init();
     
-    // Уведомление о готовности PWA
     if ('serviceWorker' in navigator && 'BeforeInstallPromptEvent' in window) {
         console.log('PWA готово к установке');
     }
