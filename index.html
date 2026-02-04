@@ -3,25 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRACE — Дневник мыслей</title>
-    <meta name="description" content="Личный дневник для осмысления мыслей и эмоций">
-    <meta name="theme-color" content="#faf8f5">
+    <title>TRACE — Дневник осознанности</title>
+    <meta name="description" content="Премиум дневник для анализа мыслей и эмоций">
+    <meta name="theme-color" content="#ffffff">
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Ambient background initial styles */
+        /* Ambient background initial state */
         .ambient-bg {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1;
-            opacity: 0.6;
+            z-index: 0;
+            opacity: 1;
             pointer-events: none;
         }
     </style>
@@ -30,31 +29,28 @@
     <!-- Ambient background canvas -->
     <canvas class="ambient-bg" id="ambientCanvas"></canvas>
     
-    <!-- Noise overlay -->
-    <div class="noise-overlay"></div>
-    
-    <!-- App container -->
-    <div class="app-container">
+    <!-- Main app container -->
+    <div class="app-wrapper">
         <!-- Toast notifications -->
         <div class="toast-container" id="toastContainer"></div>
         
         <!-- Header -->
         <header class="app-header">
             <div class="header-content">
-                <div class="header-left">
+                <div class="header-brand">
                     <h1 class="app-title">TRACE</h1>
-                    <div class="app-subtitle">дневник мыслей</div>
+                    <div class="app-subtitle">дневник осознанности</div>
                 </div>
                 <div class="header-actions">
-                    <button id="historyBtn" class="icon-btn" aria-label="История записей" title="История">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <button id="historyBtn" class="icon-btn premium-icon-btn" aria-label="История записей" title="История">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
                             <path d="M3 3v5h5"/>
                             <path d="M12 7v5l3 3"/>
                         </svg>
                     </button>
-                    <button id="exportBtn" class="icon-btn" aria-label="Экспорт данных" title="Экспорт">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <button id="exportBtn" class="icon-btn premium-icon-btn" aria-label="Экспорт данных" title="Экспорт">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                             <polyline points="7 10 12 15 17 10"/>
                             <line x1="12" y1="15" x2="12" y2="3"/>
@@ -68,23 +64,26 @@
         <main class="main-content">
             <!-- New entry screen -->
             <section id="newEntryScreen" class="screen active">
-                <div class="screen-card entry-screen">
+                <div class="screen-card premium-card">
                     <div class="screen-header">
-                        <h2 class="screen-title">Новая запись</h2>
-                        <div class="screen-subtitle" id="currentDateTime"></div>
+                        <div class="screen-title-group">
+                            <h2 class="screen-title">Новая запись</h2>
+                            <div class="screen-subtitle" id="currentDateTime"></div>
+                        </div>
                     </div>
                     
-                    <div class="entry-area">
-                        <div class="textarea-container">
+                    <div class="entry-section">
+                        <div class="textarea-wrapper">
                             <textarea 
                                 id="entryText" 
-                                placeholder="Что у вас на душе? Опишите ваши мысли, чувства, переживания... 
-                                
-Будьте искренни. Этот дневник — только для вас."
+                                placeholder="Опишите ваши мысли, чувства, переживания...
+
+Будьте искренни. Этот дневник — ваше личное пространство для осознанности."
                                 rows="6"
                                 autofocus
+                                class="premium-textarea"
                             ></textarea>
-                            <div class="textarea-decoration"></div>
+                            <div class="textarea-glow"></div>
                         </div>
                         
                         <div class="entry-meta">
@@ -93,26 +92,36 @@
                         </div>
                     </div>
 
-                    <div class="action-buttons">
-                        <button id="saveBtn" class="btn btn-primary">
-                            <span class="btn-icon">💾</span>
-                            <span class="btn-text">Сохранить</span>
+                    <!-- Action buttons -->
+                    <div class="action-buttons premium-buttons">
+                        <button id="saveBtn" class="btn btn-premium-primary">
+                            <span class="btn-content">
+                                <span class="btn-icon">💾</span>
+                                <span class="btn-text">Сохранить</span>
+                            </span>
+                            <span class="btn-shine"></span>
                         </button>
-                        <button id="analyzeBtn" class="btn btn-secondary">
-                            <span class="btn-icon">🔍</span>
-                            <span class="btn-text">Анализ</span>
+                        <button id="analyzeBtn" class="btn btn-premium-secondary">
+                            <span class="btn-content">
+                                <span class="btn-icon">🔍</span>
+                                <span class="btn-text">Анализ</span>
+                            </span>
                         </button>
-                        <button id="clearBtn" class="btn btn-ghost">
-                            <span class="btn-icon">🗑️</span>
-                            <span class="btn-text">Очистить</span>
+                        <button id="clearBtn" class="btn btn-premium-ghost">
+                            <span class="btn-content">
+                                <span class="btn-icon">🗑️</span>
+                                <span class="btn-text">Очистить</span>
+                            </span>
                         </button>
                     </div>
 
                     <!-- Analysis result -->
                     <div id="analysisResult" class="analysis-container hidden">
                         <div class="analysis-header">
-                            <h3 class="analysis-title">Результат анализа</h3>
-                            <div class="analysis-time" id="analysisTime"></div>
+                            <div class="analysis-title-group">
+                                <h3 class="analysis-title">Результат анализа</h3>
+                                <div class="analysis-time" id="analysisTime"></div>
+                            </div>
                         </div>
                         
                         <div class="analysis-content">
@@ -123,29 +132,29 @@
                                     <h4 class="section-title">Краткое резюме</h4>
                                 </div>
                                 <div class="section-content">
-                                    <p id="summaryText" class="summary-text">—</p>
+                                    <p id="summaryText" class="summary-text premium-text">—</p>
                                 </div>
                             </div>
                             
                             <!-- Themes & Emotions grid -->
                             <div class="analysis-grid">
-                                <div class="analysis-card fade-in" style="animation-delay: 0.1s">
+                                <div class="analysis-card premium-card fade-in" style="animation-delay: 0.1s">
                                     <div class="card-header">
                                         <div class="card-icon">🏷️</div>
                                         <h4 class="card-title">Темы</h4>
                                     </div>
                                     <div class="card-content">
-                                        <div id="themesList" class="tags-list"></div>
+                                        <div id="themesList" class="tags-list premium-tags"></div>
                                     </div>
                                 </div>
                                 
-                                <div class="analysis-card fade-in" style="animation-delay: 0.2s">
+                                <div class="analysis-card premium-card fade-in" style="animation-delay: 0.2s">
                                     <div class="card-header">
                                         <div class="card-icon">😊</div>
                                         <h4 class="card-title">Эмоции</h4>
                                     </div>
                                     <div class="card-content">
-                                        <div id="emotionsList" class="tags-list"></div>
+                                        <div id="emotionsList" class="tags-list premium-tags"></div>
                                     </div>
                                 </div>
                             </div>
@@ -157,7 +166,7 @@
                                     <h4 class="section-title">Уточняющий вопрос</h4>
                                 </div>
                                 <div class="section-content">
-                                    <p id="questionText" class="question-text">—</p>
+                                    <p id="questionText" class="question-text premium-text">—</p>
                                 </div>
                             </div>
                             
@@ -168,9 +177,9 @@
                                     <h4 class="section-title">Рекомендация</h4>
                                 </div>
                                 <div class="section-content">
-                                    <div class="recommendation">
+                                    <div class="recommendation-block">
                                         <div class="recommendation-badge" id="recommendationType">—</div>
-                                        <p id="recommendationText" class="recommendation-text">—</p>
+                                        <p id="recommendationText" class="recommendation-text premium-text">—</p>
                                     </div>
                                 </div>
                             </div>
@@ -183,16 +192,16 @@
                                 </div>
                                 <div class="section-content">
                                     <div class="correction-buttons">
-                                        <button id="fixThemeBtn" class="correction-btn">
-                                            <span>Тема неверна</span>
+                                        <button id="fixThemeBtn" class="correction-btn premium-correction-btn">
+                                            <span class="correction-btn-text">Тема неверна</span>
                                         </button>
-                                        <button id="fixEmotionBtn" class="correction-btn">
-                                            <span>Эмоция неверна</span>
+                                        <button id="fixEmotionBtn" class="correction-btn premium-correction-btn">
+                                            <span class="correction-btn-text">Эмоция неверна</span>
                                         </button>
                                     </div>
                                     
                                     <div id="themeCorrection" class="correction-form hidden">
-                                        <select id="themeSelect" class="select-field">
+                                        <select id="themeSelect" class="select-field premium-select">
                                             <option value="">Выберите тему...</option>
                                             <option value="Дом / Быт">Дом / Быт</option>
                                             <option value="Животные">Животные</option>
@@ -206,13 +215,13 @@
                                             <option value="Творчество">Творчество</option>
                                             <option value="Другое">Другое</option>
                                         </select>
-                                        <button id="saveThemeCorrection" class="btn btn-primary small">
+                                        <button id="saveThemeCorrection" class="btn btn-premium-primary small">
                                             Сохранить исправление
                                         </button>
                                     </div>
                                     
                                     <div id="emotionCorrection" class="correction-form hidden">
-                                        <select id="emotionSelect" class="select-field">
+                                        <select id="emotionSelect" class="select-field premium-select">
                                             <option value="">Выберите эмоцию...</option>
                                             <option value="Радость">Радость</option>
                                             <option value="Грусть">Грусть</option>
@@ -222,7 +231,7 @@
                                             <option value="Спокойствие">Спокойствие</option>
                                             <option value="Вдохновение">Вдохновение</option>
                                         </select>
-                                        <button id="saveEmotionCorrection" class="btn btn-primary small">
+                                        <button id="saveEmotionCorrection" class="btn btn-premium-primary small">
                                             Сохранить исправление
                                         </button>
                                     </div>
@@ -235,10 +244,10 @@
 
             <!-- History screen -->
             <section id="historyScreen" class="screen">
-                <div class="screen-card history-screen">
+                <div class="screen-card premium-card">
                     <div class="screen-header with-back">
-                        <button id="backBtn" class="icon-btn back-btn" aria-label="Назад">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <button id="backBtn" class="icon-btn premium-icon-btn back-btn" aria-label="Назад">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <polyline points="15 18 9 12 15 6"/>
                             </svg>
                         </button>
@@ -248,13 +257,13 @@
                         </div>
                     </div>
                     
-                    <div class="history-list-container">
+                    <div class="history-container">
                         <div id="historyList" class="history-list">
                             <!-- Entries will be inserted here -->
                             <div class="empty-state">
                                 <div class="empty-icon">📝</div>
                                 <h3 class="empty-title">Пока нет записей</h3>
-                                <p class="empty-description">Ваши мысли появятся здесь</p>
+                                <p class="empty-description premium-text">Ваши мысли появятся здесь</p>
                             </div>
                         </div>
                     </div>
@@ -263,10 +272,10 @@
 
             <!-- View entry screen -->
             <section id="viewEntryScreen" class="screen">
-                <div class="screen-card view-entry-screen">
+                <div class="screen-card premium-card">
                     <div class="screen-header with-back">
-                        <button id="backFromViewBtn" class="icon-btn back-btn" aria-label="Назад">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <button id="backFromViewBtn" class="icon-btn premium-icon-btn back-btn" aria-label="Назад">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <polyline points="15 18 9 12 15 6"/>
                             </svg>
                         </button>
@@ -277,12 +286,14 @@
                     </div>
                     
                     <div class="entry-content-container">
-                        <div class="entry-text-view" id="viewEntryText"></div>
+                        <div class="entry-text-view premium-text" id="viewEntryText"></div>
                         
                         <div class="analysis-container">
                             <div class="analysis-header">
-                                <h3 class="analysis-title">Анализ записи</h3>
-                                <div class="analysis-time" id="analysisDate"></div>
+                                <div class="analysis-title-group">
+                                    <h3 class="analysis-title">Анализ записи</h3>
+                                    <div class="analysis-time" id="analysisDate"></div>
+                                </div>
                             </div>
                             
                             <div class="analysis-content">
@@ -292,28 +303,28 @@
                                         <h4 class="section-title">Краткое резюме</h4>
                                     </div>
                                     <div class="section-content">
-                                        <p id="viewSummary" class="summary-text">—</p>
+                                        <p id="viewSummary" class="summary-text premium-text">—</p>
                                     </div>
                                 </div>
                                 
                                 <div class="analysis-grid">
-                                    <div class="analysis-card">
+                                    <div class="analysis-card premium-card">
                                         <div class="card-header">
                                             <div class="card-icon">🏷️</div>
                                             <h4 class="card-title">Темы</h4>
                                         </div>
                                         <div class="card-content">
-                                            <div id="viewThemes" class="tags-list"></div>
+                                            <div id="viewThemes" class="tags-list premium-tags"></div>
                                         </div>
                                     </div>
                                     
-                                    <div class="analysis-card">
+                                    <div class="analysis-card premium-card">
                                         <div class="card-header">
                                             <div class="card-icon">😊</div>
                                             <h4 class="card-title">Эмоции</h4>
                                         </div>
                                         <div class="card-content">
-                                            <div id="viewEmotions" class="tags-list"></div>
+                                            <div id="viewEmotions" class="tags-list premium-tags"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -324,7 +335,7 @@
                                         <h4 class="section-title">Уточняющий вопрос</h4>
                                     </div>
                                     <div class="section-content">
-                                        <p id="viewQuestion" class="question-text">—</p>
+                                        <p id="viewQuestion" class="question-text premium-text">—</p>
                                     </div>
                                 </div>
                                 
@@ -334,9 +345,9 @@
                                         <h4 class="section-title">Рекомендация</h4>
                                     </div>
                                     <div class="section-content">
-                                        <div class="recommendation">
+                                        <div class="recommendation-block">
                                             <div class="recommendation-badge" id="viewRecommendationType">—</div>
-                                            <p id="viewRecommendationText" class="recommendation-text">—</p>
+                                            <p id="viewRecommendationText" class="recommendation-text premium-text">—</p>
                                         </div>
                                     </div>
                                 </div>
@@ -354,7 +365,7 @@
                     <span id="storageInfo">Загрузка...</span>
                 </div>
                 <div class="footer-links">
-                    <span class="app-version">TRACE v0.3</span>
+                    <span class="app-version premium-text">TRACE v1.0</span>
                 </div>
             </div>
         </footer>
