@@ -1,11 +1,13 @@
-// Ambient Background System
-class AmbientBackground {
+// Ambient Background System - Premium Edition
+class PremiumAmbientBackground {
     constructor() {
         this.canvas = document.getElementById('ambientCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.particles = [];
+        this.mouse = { x: 0, y: 0 };
         this.isActive = true;
         this.lastTime = 0;
+        this.frameCount = 0;
         this.isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         
         this.init();
@@ -19,6 +21,20 @@ class AmbientBackground {
         
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
+        
+        // Mouse move for parallax effect
+        window.addEventListener('mousemove', (e) => {
+            this.mouse.x = e.clientX;
+            this.mouse.y = e.clientY;
+        });
+        
+        // Touch events for mobile
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                this.mouse.x = e.touches[0].clientX;
+                this.mouse.y = e.touches[0].clientY;
+            }
+        });
         
         this.createParticles();
         this.animate();
@@ -35,46 +51,68 @@ class AmbientBackground {
     resizeCanvas() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
+        this.createParticles();
     }
     
     drawStaticBackground() {
         this.resizeCanvas();
         
+        // Create a subtle gradient for static background
         const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
-        gradient.addColorStop(0, 'rgba(250, 248, 245, 0.8)');
-        gradient.addColorStop(1, 'rgba(245, 242, 240, 0.9)');
+        gradient.addColorStop(0, '#ffffff');
+        gradient.addColorStop(0.5, '#f8f9ff');
+        gradient.addColorStop(1, '#ffffff');
         
         this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Add some static noise for texture
+        this.addNoiseTexture();
+    }
+    
+    addNoiseTexture() {
+        const imageData = this.ctx.createImageData(this.canvas.width, this.canvas.height);
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+            const noise = Math.random() * 5;
+            data[i] = 255;
+            data[i + 1] = 255;
+            data[i + 2] = 255;
+            data[i + 3] = noise;
+        }
+        
+        this.ctx.putImageData(imageData, 0, 0);
     }
     
     createParticles() {
         this.particles = [];
-        const particleCount = Math.min(Math.floor((this.canvas.width * this.canvas.height) / 40000), 12);
+        const particleCount = Math.min(Math.floor((this.canvas.width * this.canvas.height) / 25000), 15);
         
         for (let i = 0; i < particleCount; i++) {
             this.particles.push({
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
-                size: Math.random() * 120 + 80,
-                speedX: (Math.random() - 0.5) * 0.08,
-                speedY: (Math.random() - 0.5) * 0.08,
-                color: `rgba(${180 + Math.random() * 40}, ${190 + Math.random() * 40}, ${220 + Math.random() * 40}, ${0.03 + Math.random() * 0.02})`,
+                size: Math.random() * 150 + 100,
+                speedX: (Math.random() - 0.5) * 0.06,
+                speedY: (Math.random() - 0.5) * 0.06,
+                color: `rgba(${160 + Math.random() * 40}, ${170 + Math.random() * 40}, ${220 + Math.random() * 30}, ${0.02 + Math.random() * 0.02})`,
                 originalX: Math.random() * this.canvas.width,
                 originalY: Math.random() * this.canvas.height,
-                timeOffset: Math.random() * Math.PI * 2
+                timeOffset: Math.random() * Math.PI * 2,
+                waveSpeed: 0.2 + Math.random() * 0.3,
+                waveAmplitude: 20 + Math.random() * 40,
+                parallaxFactor: 0.2 + Math.random() * 0.3
             });
         }
     }
     
     drawParticles(currentTime) {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // Draw base gradient
+        // Clear with subtle gradient
         const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
-        gradient.addColorStop(0, 'rgba(250, 248, 245, 0.6)');
-        gradient.addColorStop(0.5, 'rgba(245, 242, 240, 0.7)');
-        gradient.addColorStop(1, 'rgba(240, 238, 235, 0.6)');
+        gradient.addColorStop(0, '#ffffff');
+        gradient.addColorStop(0.5, '#fafaff');
+        gradient.addColorStop(1, '#ffffff');
         
         this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -82,11 +120,19 @@ class AmbientBackground {
         // Draw particles
         this.particles.forEach(particle => {
             const time = currentTime * 0.001;
-            const moveX = Math.sin(time * 0.5 + particle.timeOffset) * 40;
-            const moveY = Math.cos(time * 0.3 + particle.timeOffset) * 30;
             
-            particle.x = particle.originalX + moveX;
-            particle.y = particle.originalY + moveY;
+            // Calculate parallax effect based on mouse position
+            const centerX = this.canvas.width / 2;
+            const centerY = this.canvas.height / 2;
+            const parallaxX = (this.mouse.x - centerX) * particle.parallaxFactor * 0.01;
+            const parallaxY = (this.mouse.y - centerY) * particle.parallaxFactor * 0.01;
+            
+            // Add wave movement
+            const waveX = Math.sin(time * particle.waveSpeed + particle.timeOffset) * particle.waveAmplitude;
+            const waveY = Math.cos(time * particle.waveSpeed * 0.7 + particle.timeOffset) * particle.waveAmplitude;
+            
+            particle.x = particle.originalX + waveX + parallaxX;
+            particle.y = particle.originalY + waveY + parallaxY;
             
             // Very slow drift
             particle.originalX += particle.speedX;
@@ -98,12 +144,13 @@ class AmbientBackground {
             if (particle.originalY > this.canvas.height + 200) particle.originalY = -200;
             if (particle.originalY < -200) particle.originalY = this.canvas.height + 200;
             
-            // Draw particle as soft blob
+            // Draw particle as soft gradient blob
             const gradient = this.ctx.createRadialGradient(
                 particle.x, particle.y, 0,
                 particle.x, particle.y, particle.size
             );
             gradient.addColorStop(0, particle.color);
+            gradient.addColorStop(0.7, particle.color.replace('0.04', '0.02'));
             gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
             
             this.ctx.beginPath();
@@ -111,6 +158,9 @@ class AmbientBackground {
             this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
             this.ctx.fill();
         });
+        
+        // Add subtle noise overlay for texture
+        this.addNoiseTexture();
     }
     
     animate(currentTime = 0) {
@@ -119,7 +169,7 @@ class AmbientBackground {
         const deltaTime = currentTime - this.lastTime;
         this.lastTime = currentTime;
         
-        // Update only 30 times per second for performance
+        // Update at 30fps for better performance
         if (deltaTime > 33) {
             this.drawParticles(currentTime);
         }
@@ -128,7 +178,7 @@ class AmbientBackground {
     }
 }
 
-// Toast System
+// Toast Notification System
 class ToastManager {
     constructor() {
         this.container = document.getElementById('toastContainer');
@@ -156,7 +206,7 @@ class ToastManager {
         if (!toast.parentNode) return;
         
         toast.style.opacity = '0';
-        toast.style.transform = 'translate(-50%, 10px)';
+        toast.style.transform = 'translate(-50%, 20px)';
         
         setTimeout(() => {
             if (toast.parentNode) {
@@ -169,15 +219,15 @@ class ToastManager {
 
 // App Configuration
 const APP_CONFIG = {
-    STORAGE_KEY: 'trace_entries',
-    USER_DICT_KEY: 'trace_user_dictionary',
-    VERSION: '0.3.0',
+    STORAGE_KEY: 'trace_premium_entries',
+    USER_DICT_KEY: 'trace_premium_user_dictionary',
+    VERSION: '1.0.0',
     MAX_ENTRIES: 200,
     MIN_TEXT_LENGTH: 10
 };
 
 // Enhanced Text Analyzer
-class TextAnalyzer {
+class PremiumTextAnalyzer {
     constructor() {
         this.themes = {
             'Дом / Быт': ['дом', 'быт', 'уборка', 'ремонт', 'квартира', 'комната', 'кухня', 'мебель', 'техника'],
@@ -479,7 +529,7 @@ class TextAnalyzer {
 }
 
 // Entry Manager
-class EntryManager {
+class PremiumEntryManager {
     constructor() {
         this.entries = this.loadEntries();
     }
@@ -542,7 +592,7 @@ class EntryManager {
     
     exportToJSON() {
         const data = {
-            app: 'TRACE',
+            app: 'TRACE Premium',
             version: APP_CONFIG.VERSION,
             exportedAt: new Date().toISOString(),
             entries: this.entries
@@ -552,13 +602,13 @@ class EntryManager {
     }
 }
 
-// Main App
-class TraceApp {
+// Main App Class
+class TracePremiumApp {
     constructor() {
-        this.ambientBg = new AmbientBackground();
+        this.ambientBg = new PremiumAmbientBackground();
         this.toastManager = new ToastManager();
-        this.textAnalyzer = new TextAnalyzer();
-        this.entryManager = new EntryManager();
+        this.textAnalyzer = new PremiumTextAnalyzer();
+        this.entryManager = new PremiumEntryManager();
         
         this.currentText = '';
         this.currentAnalysis = null;
@@ -602,13 +652,22 @@ class TraceApp {
             this.currentText = e.target.value;
             this.updateCharCount();
             
-            // Auto-resize
+            // Auto-resize with premium animation
             textarea.style.height = 'auto';
-            textarea.style.height = Math.min(textarea.scrollHeight, 400) + 'px';
+            const newHeight = Math.min(textarea.scrollHeight, 400);
+            
+            if (!this.isReducedMotion) {
+                textarea.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                textarea.style.height = `${newHeight}px`;
+            } else {
+                textarea.style.height = `${newHeight}px`;
+            }
         });
         
         textarea.addEventListener('focus', () => {
-            textarea.parentElement.classList.add('focused');
+            if (!this.isReducedMotion) {
+                textarea.parentElement.classList.add('focused');
+            }
         });
         
         textarea.addEventListener('blur', () => {
@@ -714,8 +773,8 @@ class TraceApp {
         const analyzeBtn = document.getElementById('analyzeBtn');
         const originalContent = analyzeBtn.innerHTML;
         
-        // Show loading state
-        analyzeBtn.innerHTML = '<span class="loading"></span> Анализируем...';
+        // Show loading state with premium animation
+        analyzeBtn.innerHTML = '<span class="btn-content"><span class="btn-icon">⏳</span><span class="btn-text">Анализируем...</span></span>';
         analyzeBtn.disabled = true;
         
         // Simulate analysis delay for better UX
@@ -723,7 +782,7 @@ class TraceApp {
             this.currentAnalysis = this.textAnalyzer.analyze(this.currentText);
             this.showAnalysis(this.currentAnalysis);
             
-            // Restore button
+            // Restore button with animation
             analyzeBtn.innerHTML = originalContent;
             analyzeBtn.disabled = false;
         }, 800);
@@ -742,14 +801,34 @@ class TraceApp {
             });
         }
         
-        // Update content
-        document.getElementById('summaryText').textContent = analysis.summary;
-        document.getElementById('questionText').textContent = analysis.question;
-        document.getElementById('recommendationText').textContent = analysis.recommendation.text;
+        // Update content with smooth transitions
+        const updateWithAnimation = (element, text) => {
+            if (element) {
+                if (!this.isReducedMotion) {
+                    element.style.opacity = '0';
+                    element.style.transform = 'translateY(10px)';
+                    
+                    setTimeout(() => {
+                        element.textContent = text;
+                        element.style.opacity = '1';
+                        element.style.transform = 'translateY(0)';
+                        element.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+                    }, 50);
+                } else {
+                    element.textContent = text;
+                }
+            }
+        };
+        
+        updateWithAnimation(document.getElementById('summaryText'), analysis.summary);
+        updateWithAnimation(document.getElementById('questionText'), analysis.question);
+        updateWithAnimation(document.getElementById('recommendationText'), analysis.recommendation.text);
         
         const recommendationBadge = document.getElementById('recommendationType');
-        recommendationBadge.textContent = analysis.recommendation.label;
-        recommendationBadge.className = `recommendation-badge ${analysis.recommendation.type}`;
+        if (recommendationBadge) {
+            recommendationBadge.textContent = analysis.recommendation.label;
+            recommendationBadge.className = `recommendation-badge ${analysis.recommendation.type}`;
+        }
         
         // Update themes
         const themesList = document.getElementById('themesList');
@@ -767,27 +846,33 @@ class TraceApp {
                 .join('');
         }
         
-        // Show analysis with animation
-        analysisContainer.classList.remove('hidden');
-        
-        setTimeout(() => {
-            analysisContainer.classList.add('show');
+        // Show analysis with premium animation
+        if (!this.isReducedMotion) {
+            analysisContainer.classList.remove('hidden');
             
-            // Scroll to analysis
-            if (!this.isReducedMotion) {
+            setTimeout(() => {
+                analysisContainer.classList.add('show');
+                
+                // Scroll to analysis smoothly
                 setTimeout(() => {
                     analysisContainer.scrollIntoView({
                         behavior: 'smooth',
                         block: 'nearest'
                     });
                 }, 300);
-            }
-        }, 50);
+            }, 50);
+        } else {
+            analysisContainer.classList.remove('hidden');
+        }
         
         // Add fade-in animations to sections
         const sections = analysisContainer.querySelectorAll('.fade-in');
         sections.forEach((section, index) => {
-            section.style.animationDelay = `${index * 0.1}s`;
+            if (!this.isReducedMotion) {
+                section.style.animationDelay = `${index * 0.1}s`;
+            } else {
+                section.style.opacity = '1';
+            }
         });
     }
     
@@ -804,10 +889,14 @@ class TraceApp {
             this.updateCharCount();
             
             if (analysisContainer) {
-                analysisContainer.classList.remove('show');
-                setTimeout(() => {
+                if (!this.isReducedMotion) {
+                    analysisContainer.classList.remove('show');
+                    setTimeout(() => {
+                        analysisContainer.classList.add('hidden');
+                    }, 300);
+                } else {
                     analysisContainer.classList.add('hidden');
-                }, 300);
+                }
             }
             
             this.toastManager.show('Текст очищен', 'info');
@@ -830,15 +919,43 @@ class TraceApp {
     }
     
     switchScreen(screenId) {
-        // Hide all screens
+        // Hide all screens with animation
         document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
+            if (!this.isReducedMotion) {
+                screen.style.opacity = '0';
+                screen.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    screen.classList.remove('active');
+                    screen.style.opacity = '';
+                    screen.style.transform = '';
+                }, 200);
+            } else {
+                screen.classList.remove('active');
+            }
         });
         
-        // Show target screen
+        // Show target screen with animation
         const targetScreen = document.getElementById(screenId);
         if (targetScreen) {
-            targetScreen.classList.add('active');
+            if (!this.isReducedMotion) {
+                targetScreen.style.opacity = '0';
+                targetScreen.style.transform = 'translateY(20px)';
+                targetScreen.classList.add('active');
+                
+                setTimeout(() => {
+                    targetScreen.style.opacity = '1';
+                    targetScreen.style.transform = 'translateY(0)';
+                    targetScreen.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+                }, 10);
+                
+                setTimeout(() => {
+                    targetScreen.style.opacity = '';
+                    targetScreen.style.transform = '';
+                    targetScreen.style.transition = '';
+                }, 400);
+            } else {
+                targetScreen.classList.add('active');
+            }
         }
         
         // Scroll to top
@@ -856,7 +973,7 @@ class TraceApp {
                 <div class="empty-state">
                     <div class="empty-icon">📝</div>
                     <h3 class="empty-title">Пока нет записей</h3>
-                    <p class="empty-description">Ваши мысли появятся здесь</p>
+                    <p class="empty-description premium-text">Ваши мысли появятся здесь</p>
                 </div>
             `;
             return;
@@ -892,11 +1009,20 @@ class TraceApp {
             `;
         }).join('');
         
-        // Add click handlers
+        // Add click handlers with animation
         historyList.querySelectorAll('.history-item').forEach(item => {
             item.addEventListener('click', (e) => {
+                if (!this.isReducedMotion) {
+                    item.style.transform = 'scale(0.98)';
+                    setTimeout(() => {
+                        item.style.transform = '';
+                    }, 150);
+                }
+                
                 const entryId = item.dataset.id;
-                this.showEntry(entryId);
+                setTimeout(() => {
+                    this.showEntry(entryId);
+                }, 200);
             });
         });
     }
@@ -983,7 +1109,7 @@ class TraceApp {
         
         const a = document.createElement('a');
         a.href = url;
-        a.download = `trace_export_${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `trace_premium_export_${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1041,11 +1167,52 @@ class TraceApp {
 
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.traceApp = new TraceApp();
+    window.traceApp = new TracePremiumApp();
     
     // Register service worker for PWA
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
             .catch(err => console.error('Service Worker registration failed:', err));
+    }
+    
+    // Add CSS for animations
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const style = document.createElement('style');
+        style.textContent = `
+            .btn-premium-primary:hover {
+                transform: translateY(-3px);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            
+            .btn-premium-primary:active {
+                transform: translateY(-1px);
+                transition: transform 0.1s;
+            }
+            
+            .premium-card {
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            
+            .premium-card:hover {
+                transform: translateY(-4px);
+            }
+            
+            .history-item {
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            
+            .history-item:hover {
+                transform: translateY(-3px);
+            }
+            
+            .premium-tags span {
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            
+            .premium-tags span:hover {
+                transform: translateY(-2px);
+            }
+        `;
+        document.head.appendChild(style);
     }
 });
