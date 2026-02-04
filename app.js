@@ -1,727 +1,739 @@
-// Конфигурация приложения
+// Ambient Background System
+class AmbientBackground {
+    constructor() {
+        this.canvas = document.getElementById('ambientCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particles = [];
+        this.isActive = true;
+        this.lastTime = 0;
+        this.isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        
+        this.init();
+    }
+    
+    init() {
+        if (this.isReducedMotion) {
+            this.drawStaticBackground();
+            return;
+        }
+        
+        this.resizeCanvas();
+        window.addEventListener('resize', () => this.resizeCanvas());
+        
+        this.createParticles();
+        this.animate();
+        
+        // Handle visibility changes
+        document.addEventListener('visibilitychange', () => {
+            this.isActive = !document.hidden;
+            if (this.isActive) {
+                this.animate();
+            }
+        });
+    }
+    
+    resizeCanvas() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+    
+    drawStaticBackground() {
+        this.resizeCanvas();
+        
+        const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+        gradient.addColorStop(0, 'rgba(250, 248, 245, 0.8)');
+        gradient.addColorStop(1, 'rgba(245, 242, 240, 0.9)');
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    
+    createParticles() {
+        this.particles = [];
+        const particleCount = Math.min(Math.floor((this.canvas.width * this.canvas.height) / 40000), 12);
+        
+        for (let i = 0; i < particleCount; i++) {
+            this.particles.push({
+                x: Math.random() * this.canvas.width,
+                y: Math.random() * this.canvas.height,
+                size: Math.random() * 120 + 80,
+                speedX: (Math.random() - 0.5) * 0.08,
+                speedY: (Math.random() - 0.5) * 0.08,
+                color: `rgba(${180 + Math.random() * 40}, ${190 + Math.random() * 40}, ${220 + Math.random() * 40}, ${0.03 + Math.random() * 0.02})`,
+                originalX: Math.random() * this.canvas.width,
+                originalY: Math.random() * this.canvas.height,
+                timeOffset: Math.random() * Math.PI * 2
+            });
+        }
+    }
+    
+    drawParticles(currentTime) {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw base gradient
+        const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+        gradient.addColorStop(0, 'rgba(250, 248, 245, 0.6)');
+        gradient.addColorStop(0.5, 'rgba(245, 242, 240, 0.7)');
+        gradient.addColorStop(1, 'rgba(240, 238, 235, 0.6)');
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw particles
+        this.particles.forEach(particle => {
+            const time = currentTime * 0.001;
+            const moveX = Math.sin(time * 0.5 + particle.timeOffset) * 40;
+            const moveY = Math.cos(time * 0.3 + particle.timeOffset) * 30;
+            
+            particle.x = particle.originalX + moveX;
+            particle.y = particle.originalY + moveY;
+            
+            // Very slow drift
+            particle.originalX += particle.speedX;
+            particle.originalY += particle.speedY;
+            
+            // Boundary check with soft wrap
+            if (particle.originalX > this.canvas.width + 200) particle.originalX = -200;
+            if (particle.originalX < -200) particle.originalX = this.canvas.width + 200;
+            if (particle.originalY > this.canvas.height + 200) particle.originalY = -200;
+            if (particle.originalY < -200) particle.originalY = this.canvas.height + 200;
+            
+            // Draw particle as soft blob
+            const gradient = this.ctx.createRadialGradient(
+                particle.x, particle.y, 0,
+                particle.x, particle.y, particle.size
+            );
+            gradient.addColorStop(0, particle.color);
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            
+            this.ctx.beginPath();
+            this.ctx.fillStyle = gradient;
+            this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+    }
+    
+    animate(currentTime = 0) {
+        if (!this.isActive || this.isReducedMotion) return;
+        
+        const deltaTime = currentTime - this.lastTime;
+        this.lastTime = currentTime;
+        
+        // Update only 30 times per second for performance
+        if (deltaTime > 33) {
+            this.drawParticles(currentTime);
+        }
+        
+        requestAnimationFrame((time) => this.animate(time));
+    }
+}
+
+// Toast System
+class ToastManager {
+    constructor() {
+        this.container = document.getElementById('toastContainer');
+        this.toasts = [];
+    }
+    
+    show(message, type = 'info', duration = 3000) {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        
+        this.container.appendChild(toast);
+        this.toasts.push(toast);
+        
+        // Auto remove after duration
+        setTimeout(() => {
+            this.removeToast(toast);
+        }, duration);
+        
+        // Also remove on click
+        toast.addEventListener('click', () => this.removeToast(toast));
+    }
+    
+    removeToast(toast) {
+        if (!toast.parentNode) return;
+        
+        toast.style.opacity = '0';
+        toast.style.transform = 'translate(-50%, 10px)';
+        
+        setTimeout(() => {
+            if (toast.parentNode) {
+                this.container.removeChild(toast);
+            }
+            this.toasts = this.toasts.filter(t => t !== toast);
+        }, 300);
+    }
+}
+
+// App Configuration
 const APP_CONFIG = {
-    STORAGE_KEY: 'trace_v0_entries',
-    USER_DICT_KEY: 'trace_v0_user_dict',
-    VERSION: '0.2.0',
-    MAX_ENTRIES: 100,
+    STORAGE_KEY: 'trace_entries',
+    USER_DICT_KEY: 'trace_user_dictionary',
+    VERSION: '0.3.0',
+    MAX_ENTRIES: 200,
     MIN_TEXT_LENGTH: 10
 };
 
-// Базовые словари для анализа
-const AnalysisRules = {
-    themes: {
-        'Дом / Быт': ['дом', 'быт', 'уборка', 'ремонт', 'квартира', 'комната', 'кухня', 'мебель', 'техника'],
-        'Животные': ['собака', 'щенок', 'пёс', 'кот', 'кошка', 'питомец', 'животное', 'зверь', 'котёнок', 'аквариум', 'птица', 'хомяк'],
-        'Радость / Позитив': ['радость', 'счастье', 'рад', 'доволен', 'ура', 'восторг', 'веселье', 'праздник', 'успех', 'победа'],
-        'Отношения': ['друг', 'подруга', 'парень', 'девушка', 'муж', 'жена', 'семья', 'родители', 'дети', 'ребёнок', 'любовь', 'ссора'],
-        'Работа': ['работа', 'офис', 'начальник', 'коллега', 'зарплата', 'должность', 'карьера', 'увольнение', 'совещание', 'отчёт'],
-        'Проекты': ['проект', 'задача', 'дедлайн', 'срок', 'клиент', 'разработка', 'внедрение', 'запуск', 'тестирование', 'планирование'],
-        'Финансы': ['деньги', 'финансы', 'бюджет', 'доход', 'расход', 'премия', 'кредит', 'долг', 'экономия', 'инвестиция', 'покупка'],
-        'Здоровье': ['здоровье', 'болезнь', 'лекарство', 'врач', 'больница', 'диета', 'спорт', 'тренировка', 'питание', 'витамины'],
-        'Развитие': ['развитие', 'обучение', 'курс', 'книга', 'саморазвитие', 'навык', 'образование', 'университет', 'экзамен'],
-        'Творчество': ['творчество', 'искусство', 'рисование', 'музыка', 'танец', 'пение', 'писательство', 'поэзия', 'вдохновение', 'хобби']
-    },
-
-    emotions: {
-        'Радость': ['радость', 'счастье', 'восторг', 'веселье', 'удовольствие', 'ликование', 'праздник', 'ура', 'рад', 'доволен'],
-        'Грусть': ['грусть', 'печаль', 'тоска', 'уныние', 'разочарование', 'сожаление', 'одиночество', 'скука', 'плакать', 'слёзы'],
-        'Тревога': ['тревога', 'беспокойство', 'опасение', 'страх', 'испуг', 'паника', 'нервозность', 'волнение', 'стресс', 'боюсь'],
-        'Злость': ['злость', 'гнев', 'ярость', 'раздражение', 'негодование', 'возмущение', 'злоба', 'ненависть', 'обида', 'сердит'],
-        'Усталость': ['усталость', 'устал', 'устала', 'изнеможение', 'истощение', 'сонливость', 'вялость', 'нет сил', 'утомление'],
-        'Спокойствие': ['спокойствие', 'умиротворение', 'гармония', 'баланс', 'расслабление', 'отдых', 'релакс', 'мир', 'тишина', 'покой'],
-        'Вдохновение': ['вдохновение', 'энтузиазм', 'подъём', 'идея', 'творческий', 'озарение', 'поток', 'замысел', 'креатив', 'вдохновлён']
-    },
-
-    questions: {
-        'Дом / Быт': 'Что бы вы хотели изменить в вашем домашнем пространстве?',
-        'Животные': 'Как ваш питомец влияет на ваше настроение?',
-        'Радость / Позитив': 'Что именно вызвало у вас такие позитивные эмоции?',
-        'Отношения': 'Как это повлияло на ваши отношения с человеком?',
-        'Работа': 'Что самое важное в этой рабочей ситуации?',
-        'Проекты': 'Какой следующий шаг будет самым важным в вашем проекте?',
-        'Финансы': 'Как это решение повлияет на ваш бюджет в долгосрочной перспективе?',
-        'Здоровье': 'Что вы можете сделать для улучшения здоровья уже на этой неделе?',
-        'Развитие': 'Чему конкретно вы хотите научиться в ближайшее время?',
-        'Творчество': 'Что вас вдохновляет на творчество в последнее время?',
-        'Другое': 'Расскажите подробнее, что происходит?',
-        'default': 'Что для вас самое важное в этой ситуации?'
-    },
-
-    recommendations: {
-        'Радость': {
-            type: 'do',
-            label: 'Действовать',
-            text: 'Эмоциональный фон благоприятный. Вы в хорошем настроении, это подходящее время для активных действий.'
-        },
-        'Грусть': {
-            type: 'wait',
-            label: 'Подождать',
-            text: 'Эмоциональное состояние снижено. Дайте себе время на восстановление сил перед принятием важных решений.'
-        },
-        'Тревога': {
-            type: 'dont',
-            label: 'Не действовать',
-            text: 'Вы испытываете тревогу. В таком состоянии решения могут быть неоптимальными. Лучше успокоиться и вернуться к вопросу позже.'
-        },
-        'Злость': {
-            type: 'dont',
-            label: 'Не действовать',
-            text: 'Сильные эмоции могут помешать объективной оценке. Отложите решение до того момента, когда эмоции улягутся.'
-        },
-        'Усталость': {
-            type: 'wait',
-            label: 'Подождать',
-            text: 'Организму нужен отдых. Примите решение после восстановления сил.'
-        },
-        'Спокойствие': {
-            type: 'wait',
-            label: 'Подождать',
-            text: 'Ситуация стабильна. Можно подождать, собрать больше информации и принять взвешенное решение.'
-        },
-        'Вдохновение': {
-            type: 'do',
-            label: 'Действовать',
-            text: 'Вдохновение — отличный двигатель. Используйте этот подъём энергии для реализации замыслов.'
-        },
-        'default': {
-            type: 'wait',
-            label: 'Подождать',
-            text: 'Недостаточно данных для точной рекомендации. Рекомендуется собрать больше информации.'
-        }
+// Enhanced Text Analyzer
+class TextAnalyzer {
+    constructor() {
+        this.themes = {
+            'Дом / Быт': ['дом', 'быт', 'уборка', 'ремонт', 'квартира', 'комната', 'кухня', 'мебель', 'техника'],
+            'Животные': ['собака', 'щенок', 'пёс', 'кот', 'кошка', 'питомец', 'животное', 'зверь', 'котёнок'],
+            'Радость / Позитив': ['радость', 'счастье', 'рад', 'доволен', 'восторг', 'веселье', 'праздник', 'успех'],
+            'Отношения': ['друг', 'подруга', 'парень', 'девушка', 'муж', 'жена', 'семья', 'родители', 'любовь'],
+            'Работа': ['работа', 'офис', 'начальник', 'коллега', 'зарплата', 'должность', 'карьера'],
+            'Проекты': ['проект', 'задача', 'дедлайн', 'срок', 'клиент', 'разработка', 'планирование'],
+            'Финансы': ['деньги', 'финансы', 'бюджет', 'доход', 'расход', 'кредит', 'долг', 'экономия'],
+            'Здоровье': ['здоровье', 'болезнь', 'лекарство', 'врач', 'больница', 'диета', 'спорт', 'питание'],
+            'Развитие': ['развитие', 'обучение', 'курс', 'книга', 'саморазвитие', 'навык', 'образование'],
+            'Творчество': ['творчество', 'искусство', 'рисование', 'музыка', 'танец', 'пение', 'вдохновение']
+        };
+        
+        this.emotions = {
+            'Радость': ['радость', 'счастье', 'восторг', 'веселье', 'удовольствие', 'рад', 'доволен'],
+            'Грусть': ['грусть', 'печаль', 'тоска', 'уныние', 'разочарование', 'сожаление', 'одиночество'],
+            'Тревога': ['тревога', 'беспокойство', 'опасение', 'страх', 'испуг', 'паника', 'волнение'],
+            'Злость': ['злость', 'гнев', 'ярость', 'раздражение', 'негодование', 'возмущение', 'обида'],
+            'Усталость': ['усталость', 'устал', 'устала', 'изнеможение', 'истощение', 'сонливость', 'вялость'],
+            'Спокойствие': ['спокойствие', 'умиротворение', 'гармония', 'баланс', 'расслабление', 'отдых', 'покой'],
+            'Вдохновение': ['вдохновение', 'энтузиазм', 'подъём', 'идея', 'творческий', 'озарение', 'креатив']
+        };
+        
+        this.userDictionary = this.loadUserDictionary();
     }
-};
-
-// Менеджер пользовательского словаря
-const UserDictionary = {
-    get: () => {
+    
+    loadUserDictionary() {
         try {
             const data = localStorage.getItem(APP_CONFIG.USER_DICT_KEY);
             return data ? JSON.parse(data) : { themes: {}, emotions: {} };
-        } catch (error) {
-            console.error('Ошибка чтения пользовательского словаря:', error);
+        } catch {
             return { themes: {}, emotions: {} };
         }
-    },
-
-    save: (dict) => {
+    }
+    
+    saveUserDictionary() {
         try {
-            localStorage.setItem(APP_CONFIG.USER_DICT_KEY, JSON.stringify(dict));
+            localStorage.setItem(APP_CONFIG.USER_DICT_KEY, JSON.stringify(this.userDictionary));
             return true;
-        } catch (error) {
-            console.error('Ошибка сохранения пользовательского словаря:', error);
+        } catch {
             return false;
         }
-    },
-
-    addThemeWord: (theme, word) => {
-        const dict = UserDictionary.get();
-        if (!dict.themes[theme]) {
-            dict.themes[theme] = [];
-        }
-        if (!dict.themes[theme].includes(word)) {
-            dict.themes[theme].push(word);
-            return UserDictionary.save(dict);
-        }
-        return true;
-    },
-
-    addEmotionWord: (emotion, word) => {
-        const dict = UserDictionary.get();
-        if (!dict.emotions[emotion]) {
-            dict.emotions[emotion] = [];
-        }
-        if (!dict.emotions[emotion].includes(word)) {
-            dict.emotions[emotion].push(word);
-            return UserDictionary.save(dict);
-        }
-        return true;
-    },
-
-    getCombinedThemes: () => {
-        const base = AnalysisRules.themes;
-        const user = UserDictionary.get().themes;
-        const combined = { ...base };
-        
-        for (const [theme, words] of Object.entries(user)) {
-            if (!combined[theme]) {
-                combined[theme] = [];
-            }
-            combined[theme] = [...new Set([...combined[theme], ...words])];
-        }
-        
-        return combined;
-    },
-
-    getCombinedEmotions: () => {
-        const base = AnalysisRules.emotions;
-        const user = UserDictionary.get().emotions;
-        const combined = { ...base };
-        
-        for (const [emotion, words] of Object.entries(user)) {
-            if (!combined[emotion]) {
-                combined[emotion] = [];
-            }
-            combined[emotion] = [...new Set([...combined[emotion], ...words])];
-        }
-        
-        return combined;
     }
-};
-
-// Анализатор текста
-const TextAnalyzer = {
-    normalizeText: (text) => {
+    
+    addThemeToDictionary(theme, keywords) {
+        if (!this.userDictionary.themes[theme]) {
+            this.userDictionary.themes[theme] = [];
+        }
+        keywords.forEach(keyword => {
+            if (!this.userDictionary.themes[theme].includes(keyword)) {
+                this.userDictionary.themes[theme].push(keyword);
+            }
+        });
+        this.saveUserDictionary();
+    }
+    
+    addEmotionToDictionary(emotion, keywords) {
+        if (!this.userDictionary.emotions[emotion]) {
+            this.userDictionary.emotions[emotion] = [];
+        }
+        keywords.forEach(keyword => {
+            if (!this.userDictionary.emotions[emotion].includes(keyword)) {
+                this.userDictionary.emotions[emotion].push(keyword);
+            }
+        });
+        this.saveUserDictionary();
+    }
+    
+    normalizeText(text) {
         return text.toLowerCase()
             .replace(/[ё]/g, 'е')
             .replace(/[^\wа-я\s]/gi, ' ')
             .replace(/\s+/g, ' ')
             .trim();
-    },
-
-    extractKeywords: (text) => {
-        const normalized = TextAnalyzer.normalizeText(text);
-        return normalized.split(' ')
-            .filter(word => word.length > 2 && !['это', 'что', 'как', 'для', 'меня', 'очень', 'мне', 'был', 'была'].includes(word));
-    },
-
-    findMatches: (keywords, dictionary) => {
-        const matches = {};
+    }
+    
+    extractKeywords(text) {
+        const normalized = this.normalizeText(text);
+        const words = normalized.split(' ');
         
-        for (const [category, words] of Object.entries(dictionary)) {
-            let count = 0;
-            for (const keyword of keywords) {
-                for (const dictWord of words) {
-                    if (keyword.includes(dictWord) || dictWord.includes(keyword)) {
-                        count++;
-                        break;
-                    }
+        return words.filter(word => 
+            word.length > 2 && 
+            !['это', 'что', 'как', 'для', 'меня', 'очень', 'мне', 'был', 'была', 'или', 'если', 'тот'].includes(word)
+        );
+    }
+    
+    analyze(text) {
+        const trimmedText = text.trim();
+        
+        if (trimmedText.length < APP_CONFIG.MIN_TEXT_LENGTH) {
+            return this.getShortTextAnalysis();
+        }
+        
+        const keywords = this.extractKeywords(trimmedText);
+        
+        if (keywords.length === 0) {
+            return this.getInsufficientDataAnalysis();
+        }
+        
+        // Combine base and user dictionaries
+        const allThemes = { ...this.themes };
+        const allEmotions = { ...this.emotions };
+        
+        Object.entries(this.userDictionary.themes).forEach(([theme, words]) => {
+            if (!allThemes[theme]) allThemes[theme] = [];
+            allThemes[theme] = [...new Set([...allThemes[theme], ...words])];
+        });
+        
+        Object.entries(this.userDictionary.emotions).forEach(([emotion, words]) => {
+            if (!allEmotions[emotion]) allEmotions[emotion] = [];
+            allEmotions[emotion] = [...new Set([...allEmotions[emotion], ...words])];
+        });
+        
+        // Detect themes
+        const themeScores = {};
+        keywords.forEach(keyword => {
+            Object.entries(allThemes).forEach(([theme, themeWords]) => {
+                if (themeWords.some(themeWord => 
+                    keyword.includes(themeWord) || themeWord.includes(keyword))) {
+                    themeScores[theme] = (themeScores[theme] || 0) + 1;
                 }
-            }
-            if (count > 0) {
-                matches[category] = count;
-            }
-        }
+            });
+        });
         
-        return matches;
-    },
-
-    detectThemes: (text) => {
-        if (text.length < APP_CONFIG.MIN_TEXT_LENGTH) {
-            return ['Текст слишком короткий'];
-        }
-        
-        const keywords = TextAnalyzer.extractKeywords(text);
-        if (keywords.length === 0) {
-            return ['Недостаточно данных / Другое'];
-        }
-        
-        const combinedThemes = UserDictionary.getCombinedThemes();
-        const matches = TextAnalyzer.findMatches(keywords, combinedThemes);
-        
-        if (Object.keys(matches).length === 0) {
-            return ['Недостаточно данных / Другое'];
-        }
-        
-        const sorted = Object.entries(matches)
+        let detectedThemes = Object.entries(themeScores)
             .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
             .map(entry => entry[0]);
-        
-        const confidence = matches[sorted[0]] / keywords.length;
-        return confidence > 0.1 ? sorted.slice(0, 3) : ['Недостаточно данных / Другое'];
-    },
-
-    detectEmotions: (text) => {
-        if (text.length < APP_CONFIG.MIN_TEXT_LENGTH) {
-            return ['Текст слишком короткий'];
+            
+        if (detectedThemes.length === 0) {
+            detectedThemes = ['Недостаточно данных / Другое'];
         }
         
-        const keywords = TextAnalyzer.extractKeywords(text);
-        if (keywords.length === 0) {
-            return ['Не определено'];
-        }
+        // Detect emotions
+        const emotionScores = {};
+        keywords.forEach(keyword => {
+            Object.entries(allEmotions).forEach(([emotion, emotionWords]) => {
+                if (emotionWords.some(emotionWord => 
+                    keyword.includes(emotionWord) || emotionWord.includes(keyword))) {
+                    emotionScores[emotion] = (emotionScores[emotion] || 0) + 1;
+                }
+            });
+        });
         
-        const combinedEmotions = UserDictionary.getCombinedEmotions();
-        const matches = TextAnalyzer.findMatches(keywords, combinedEmotions);
-        
-        if (Object.keys(matches).length === 0) {
-            return ['Не определено'];
-        }
-        
-        const sorted = Object.entries(matches)
+        let detectedEmotions = Object.entries(emotionScores)
             .sort((a, b) => b[1] - a[1])
+            .slice(0, 2)
             .map(entry => entry[0]);
-        
-        const confidence = matches[sorted[0]] / keywords.length;
-        return confidence > 0.15 ? sorted.slice(0, 2) : ['Не определено'];
-    },
-
-    generateQuestion: (themes) => {
-        if (themes[0] === 'Текст слишком короткий' || themes[0] === 'Недостаточно данных / Другое') {
-            return AnalysisRules.questions['Другое'];
+            
+        if (detectedEmotions.length === 0) {
+            detectedEmotions = ['Не определено'];
         }
         
-        for (const theme of themes) {
-            if (AnalysisRules.questions[theme]) {
-                return AnalysisRules.questions[theme];
+        return {
+            summary: this.generateSummary(trimmedText, detectedThemes, detectedEmotions),
+            themes: detectedThemes,
+            emotions: detectedEmotions,
+            question: this.generateQuestion(detectedThemes[0]),
+            recommendation: this.generateRecommendation(detectedEmotions[0]),
+            meta: {
+                words: keywords.length,
+                sentences: trimmedText.split(/[.!?]+/).filter(s => s.trim().length > 0).length,
+                analyzedAt: new Date().toISOString()
             }
-        }
-        
-        return AnalysisRules.questions.default;
-    },
-
-    generateRecommendation: (emotions) => {
-        if (emotions[0] === 'Текст слишком короткий' || emotions[0] === 'Не определено') {
-            return AnalysisRules.recommendations.default;
-        }
-        
-        for (const emotion of emotions) {
-            if (AnalysisRules.recommendations[emotion]) {
-                return AnalysisRules.recommendations[emotion];
+        };
+    }
+    
+    getShortTextAnalysis() {
+        return {
+            summary: 'Текст слишком короткий для глубокого анализа. Попробуйте описать свои мысли подробнее.',
+            themes: ['Текст слишком короткий'],
+            emotions: ['Текст слишком короткий'],
+            question: 'Что ещё вы хотели бы добавить к этой мысли?',
+            recommendation: {
+                type: 'wait',
+                label: 'Подождать',
+                text: 'Добавьте больше деталей для получения точной рекомендации.'
+            },
+            meta: {
+                words: 0,
+                sentences: 0,
+                analyzedAt: new Date().toISOString()
             }
-        }
-        
-        return AnalysisRules.recommendations.default;
-    },
-
-    generateSummary: (text, themes, emotions) => {
-        if (text.length < APP_CONFIG.MIN_TEXT_LENGTH) {
-            return 'Текст слишком короткий для анализа. Напишите хотя бы 10 символов.';
+        };
+    }
+    
+    getInsufficientDataAnalysis() {
+        return {
+            summary: 'Текст не содержит достаточно ключевых слов для анализа. Попробуйте быть более конкретным.',
+            themes: ['Недостаточно данных / Другое'],
+            emotions: ['Не определено'],
+            question: 'Что именно вас беспокоит или радует в этой ситуации?',
+            recommendation: {
+                type: 'wait',
+                label: 'Подождать',
+                text: 'Опишите ситуацию более подробно для получения рекомендации.'
+            },
+            meta: {
+                words: 0,
+                sentences: 0,
+                analyzedAt: new Date().toISOString()
+            }
+        };
+    }
+    
+    generateSummary(text, themes, emotions) {
+        if (themes[0] === 'Текст слишком короткий') {
+            return 'Текст слишком короткий для анализа.';
         }
         
         if (themes[0] === 'Недостаточно данных / Другое') {
-            return 'Текст не содержит достаточного количества ключевых слов для определения тем. Попробуйте описать подробнее.';
+            return 'Текст требует более подробного описания для анализа.';
         }
         
+        const wordCount = text.split(/\s+/).length;
         const mainTheme = themes[0];
         const mainEmotion = emotions[0];
         
-        let summary = `Основная тема: ${mainTheme}. `;
+        let summary = `Основная тема: ${mainTheme.toLowerCase()}. `;
         
-        if (mainEmotion !== 'Не определено' && mainEmotion !== 'Текст слишком короткий') {
+        if (mainEmotion !== 'Не определено') {
             summary += `Преобладающая эмоция: ${mainEmotion.toLowerCase()}. `;
         }
         
-        const wordCount = text.trim().split(/\s+/).length;
         if (wordCount < 20) {
-            summary += 'Описание краткое, но уже позволяет сделать некоторые выводы.';
+            summary += 'Запись краткая, но уже позволяет сделать некоторые выводы.';
         } else if (wordCount < 50) {
-            summary += 'Текст содержит достаточно деталей для анализа.';
+            summary += 'Достаточно деталей для содержательного анализа.';
         } else {
             summary += 'Подробное описание позволяет провести глубокий анализ.';
         }
         
         return summary;
-    },
-
-    analyze: (text) => {
-        const trimmedText = text.trim();
+    }
+    
+    generateQuestion(theme) {
+        const questions = {
+            'Дом / Быт': 'Что в вашем домашнем пространстве требует изменения?',
+            'Животные': 'Как ваш питомец влияет на ваше эмоциональное состояние?',
+            'Радость / Позитив': 'Что именно вызвало у вас эти позитивные чувства?',
+            'Отношения': 'Как это повлияло на ваши отношения с близкими?',
+            'Работа': 'Что самое важное в этой рабочей ситуации для вас?',
+            'Проекты': 'Какой следующий шаг будет ключевым в вашем проекте?',
+            'Финансы': 'Как это решение отразится на вашем финансовом положении?',
+            'Здоровье': 'Что вы можете сделать для своего здоровья прямо сейчас?',
+            'Развитие': 'Чему бы вы хотели научиться в ближайшее время?',
+            'Творчество': 'Что вдохновляет вас на творчество в последнее время?'
+        };
         
-        if (!trimmedText) {
-            return {
-                summary: 'Введите текст для анализа',
-                themes: ['Ожидание ввода'],
-                emotions: ['Ожидание ввода'],
-                question: 'Что вы хотите проанализировать?',
-                recommendation: {
-                    type: 'wait',
-                    label: 'Ожидание',
-                    text: 'Введите текст для получения рекомендации'
-                },
-                meta: {
-                    words: 0,
-                    sentences: 0,
-                    analyzedAt: new Date().toISOString()
-                }
-            };
-        }
-        
-        const themes = TextAnalyzer.detectThemes(trimmedText);
-        const emotions = TextAnalyzer.detectEmotions(trimmedText);
-        const question = TextAnalyzer.generateQuestion(themes);
-        const recommendation = TextAnalyzer.generateRecommendation(emotions);
-        const summary = TextAnalyzer.generateSummary(trimmedText, themes, emotions);
-        
-        const sentences = trimmedText.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
-        const words = trimmedText.split(/\s+/).filter(w => w.length > 0).length;
-        
-        return {
-            summary,
-            themes,
-            emotions,
-            question,
-            recommendation,
-            meta: {
-                words,
-                sentences,
-                analyzedAt: new Date().toISOString()
+        return questions[theme] || 'Что для вас самое важное в этой ситуации?';
+    }
+    
+    generateRecommendation(emotion) {
+        const recommendations = {
+            'Радость': {
+                type: 'do',
+                label: 'Действовать',
+                text: 'Ваше эмоциональное состояние благоприятно для активных действий. Используйте эту энергию.'
+            },
+            'Грусть': {
+                type: 'wait',
+                label: 'Подождать',
+                text: 'Дайте себе время на восстановление эмоциональных сил. Важные решения лучше принимать в спокойном состоянии.'
+            },
+            'Тревога': {
+                type: 'dont',
+                label: 'Не действовать',
+                text: 'В состоянии тревоги решения могут быть необъективными. Сначала успокойтесь.'
+            },
+            'Злость': {
+                type: 'dont',
+                label: 'Не действовать',
+                text: 'Сильные эмоции мешают трезвой оценке. Отложите решения до успокоения.'
+            },
+            'Усталость': {
+                type: 'wait',
+                label: 'Подождать',
+                text: 'Организму нужен отдых. Принимайте решения после восстановления сил.'
+            },
+            'Спокойствие': {
+                type: 'wait',
+                label: 'Подождать',
+                text: 'Вы в уравновешенном состоянии. Можно не спешить с решениями, собрать больше информации.'
+            },
+            'Вдохновение': {
+                type: 'do',
+                label: 'Действовать',
+                text: 'Вдохновение — ценный ресурс. Используйте этот творческий подъём для реализации идей.'
             }
         };
+        
+        return recommendations[emotion] || {
+            type: 'wait',
+            label: 'Подождать',
+            text: 'Недостаточно данных для точной рекомендации. Подумайте ещё над ситуацией.'
+        };
     }
-};
+}
 
-// Менеджер записей
-const EntryManager = {
-    getAll: () => {
+// Entry Manager
+class EntryManager {
+    constructor() {
+        this.entries = this.loadEntries();
+    }
+    
+    loadEntries() {
         try {
             const data = localStorage.getItem(APP_CONFIG.STORAGE_KEY);
             return data ? JSON.parse(data) : [];
-        } catch (error) {
-            console.error('Ошибка чтения записей:', error);
+        } catch {
             return [];
         }
-    },
-
-    saveAll: (entries) => {
+    }
+    
+    saveEntries() {
         try {
-            localStorage.setItem(APP_CONFIG.STORAGE_KEY, JSON.stringify(entries));
+            localStorage.setItem(APP_CONFIG.STORAGE_KEY, JSON.stringify(this.entries));
             return true;
-        } catch (error) {
-            console.error('Ошибка сохранения записей:', error);
+        } catch {
             return false;
         }
-    },
-
-    add: (text, analysis) => {
-        const entries = EntryManager.getAll();
-        
-        if (entries.length >= APP_CONFIG.MAX_ENTRIES) {
-            entries.shift();
-        }
-        
-        const newEntry = {
+    }
+    
+    addEntry(text, analysis) {
+        const entry = {
             id: Date.now().toString(),
             date: new Date().toISOString(),
             text: text.trim(),
             analysis: analysis
         };
         
-        entries.push(newEntry);
+        this.entries.unshift(entry);
         
-        if (EntryManager.saveAll(entries)) {
-            return newEntry;
+        if (this.entries.length > APP_CONFIG.MAX_ENTRIES) {
+            this.entries = this.entries.slice(0, APP_CONFIG.MAX_ENTRIES);
         }
-        return null;
-    },
-
-    getById: (id) => {
-        const entries = EntryManager.getAll();
-        return entries.find(entry => entry.id === id);
-    },
-
-    remove: (id) => {
-        const entries = EntryManager.getAll();
-        const filtered = entries.filter(entry => entry.id !== id);
-        return EntryManager.saveAll(filtered);
-    },
-
-    exportToJSON: () => {
-        const entries = EntryManager.getAll();
-        const userDict = UserDictionary.get();
-        const exportData = {
-            app: 'TRACE v0',
+        
+        return this.saveEntries() ? entry : null;
+    }
+    
+    getEntry(id) {
+        return this.entries.find(entry => entry.id === id);
+    }
+    
+    deleteEntry(id) {
+        this.entries = this.entries.filter(entry => entry.id !== id);
+        return this.saveEntries();
+    }
+    
+    getAllEntries() {
+        return [...this.entries];
+    }
+    
+    getStats() {
+        return {
+            total: this.entries.length,
+            lastEntry: this.entries.length > 0 ? this.entries[0].date : null,
+            storageUsed: JSON.stringify(this.entries).length
+        };
+    }
+    
+    exportToJSON() {
+        const data = {
+            app: 'TRACE',
             version: APP_CONFIG.VERSION,
             exportedAt: new Date().toISOString(),
-            entries: entries,
-            userDictionary: userDict
+            entries: this.entries
         };
-        return JSON.stringify(exportData, null, 2);
-    },
-
-    importFromJSON: (jsonData) => {
-        try {
-            const data = JSON.parse(jsonData);
-            if (data.entries && Array.isArray(data.entries)) {
-                EntryManager.saveAll(data.entries);
-            }
-            if (data.userDictionary) {
-                localStorage.setItem(APP_CONFIG.USER_DICT_KEY, JSON.stringify(data.userDictionary));
-            }
-            return true;
-        } catch (error) {
-            console.error('Ошибка импорта:', error);
-            return false;
-        }
-    },
-
-    getStats: () => {
-        const entries = EntryManager.getAll();
-        const userDict = UserDictionary.get();
-        return {
-            totalEntries: entries.length,
-            totalThemes: Object.keys(userDict.themes || {}).length,
-            totalEmotions: Object.keys(userDict.emotions || {}).length,
-            lastEntry: entries.length > 0 ? entries[entries.length - 1].date : null
-        };
+        
+        return JSON.stringify(data, null, 2);
     }
-};
+}
 
-// Toast-уведомления
-const ToastManager = {
-    show: (message, type = 'info', duration = 3000) => {
-        const container = document.getElementById('toastContainer');
-        if (!container) return;
+// Main App
+class TraceApp {
+    constructor() {
+        this.ambientBg = new AmbientBackground();
+        this.toastManager = new ToastManager();
+        this.textAnalyzer = new TextAnalyzer();
+        this.entryManager = new EntryManager();
         
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
+        this.currentText = '';
+        this.currentAnalysis = null;
+        this.isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         
-        container.appendChild(toast);
-        
-        // Удаляем toast после анимации
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(-10px)';
-                setTimeout(() => {
-                    if (toast.parentNode) {
-                        container.removeChild(toast);
-                    }
-                }, 300);
-            }
-        }, duration);
+        this.init();
     }
-};
-
-// UI Manager
-const UIManager = {
-    currentAnalysis: null,
-    currentText: '',
-    isReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-
-    init: () => {
-        // Обновление даты и времени
-        UIManager.updateDateTime();
-        setInterval(UIManager.updateDateTime, 60000);
+    
+    init() {
+        this.updateDateTime();
+        setInterval(() => this.updateDateTime(), 60000);
         
-        // Инициализация элементов
-        const textarea = document.getElementById('entryText');
-        if (textarea) {
-            textarea.addEventListener('input', UIManager.handleTextareaInput);
-            textarea.addEventListener('focus', () => {
-                textarea.parentElement.classList.add('focused');
-            });
-            textarea.addEventListener('blur', () => {
-                textarea.parentElement.classList.remove('focused');
-            });
-        }
-        
-        // Загрузка данных
-        UIManager.loadHistory();
-        UIManager.updateStorageInfo();
-        
-        // Настройка обработчиков
-        UIManager.setupEventListeners();
-        UIManager.setupCorrectionListeners();
-        
-        // Настройка анимаций для пользователей с prefers-reduced-motion
-        if (UIManager.isReducedMotion) {
-            document.documentElement.style.setProperty('--transition-base', '0ms');
-            document.documentElement.style.setProperty('--transition-fast', '0ms');
-            document.documentElement.style.setProperty('--transition-slow', '0ms');
-        }
-        
-        // Инициализация живого фона
-        UIManager.initAmbientBackground();
-    },
-
-    initAmbientBackground: () => {
-        if (UIManager.isReducedMotion) return;
-        
-        const bg = document.getElementById('ambientBg');
-        if (!bg) return;
-        
-        // Плавное изменение градиента
-        let time = 0;
-        const updateBackground = () => {
-            if (!UIManager.isReducedMotion) {
-                time += 0.001;
-                const x = Math.sin(time) * 10;
-                const y = Math.cos(time * 0.7) * 10;
-                const scale = 1 + Math.sin(time * 0.5) * 0.02;
-                
-                bg.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-            }
-            requestAnimationFrame(updateBackground);
-        };
-        
-        // Запускаем только если не включен prefers-reduced-motion
-        if (!UIManager.isReducedMotion) {
-            requestAnimationFrame(updateBackground);
-        }
-    },
-
-    updateDateTime: () => {
+        this.setupEventListeners();
+        this.setupTextarea();
+        this.loadHistory();
+        this.updateStorageInfo();
+    }
+    
+    updateDateTime() {
         const now = new Date();
-        const dateTimeStr = now.toLocaleDateString('ru-RU', {
+        const options = {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
-        });
+        };
         
         const dateTimeElement = document.getElementById('currentDateTime');
         if (dateTimeElement) {
-            dateTimeElement.textContent = dateTimeStr;
+            dateTimeElement.textContent = now.toLocaleDateString('ru-RU', options);
         }
-    },
-
-    handleTextareaInput: (e) => {
-        const textarea = e.target;
-        const count = textarea.value.length;
-        const charCountElement = document.getElementById('charCount');
+    }
+    
+    setupTextarea() {
+        const textarea = document.getElementById('entryText');
+        if (!textarea) return;
         
-        if (charCountElement) {
-            charCountElement.textContent = `${count} символов`;
+        textarea.addEventListener('input', (e) => {
+            this.currentText = e.target.value;
+            this.updateCharCount();
             
-            // Динамическое изменение высоты textarea
+            // Auto-resize
             textarea.style.height = 'auto';
-            const newHeight = Math.min(Math.max(textarea.scrollHeight, 160), 400);
-            textarea.style.height = `${newHeight}px`;
+            textarea.style.height = Math.min(textarea.scrollHeight, 400) + 'px';
+        });
+        
+        textarea.addEventListener('focus', () => {
+            textarea.parentElement.classList.add('focused');
+        });
+        
+        textarea.addEventListener('blur', () => {
+            textarea.parentElement.classList.remove('focused');
+        });
+    }
+    
+    updateCharCount() {
+        const charCountElement = document.getElementById('charCount');
+        if (charCountElement) {
+            charCountElement.textContent = `${this.currentText.length} символов`;
         }
-    },
-
-    loadHistory: () => {
-        const entries = EntryManager.getAll();
-        const historyList = document.getElementById('historyList');
+    }
+    
+    setupEventListeners() {
+        // Save button
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveEntry());
+        }
         
-        if (!historyList) return;
+        // Analyze button
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        if (analyzeBtn) {
+            analyzeBtn.addEventListener('click', () => this.analyzeText());
+        }
         
-        if (entries.length === 0) {
-            historyList.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">📝</div>
-                    <h3 class="empty-state-title">Записей пока нет</h3>
-                    <p class="empty-state-text">Начните с новой записи</p>
-                </div>
-            `;
+        // Clear button
+        const clearBtn = document.getElementById('clearBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearText());
+        }
+        
+        // Navigation buttons
+        const historyBtn = document.getElementById('historyBtn');
+        if (historyBtn) {
+            historyBtn.addEventListener('click', () => this.showHistory());
+        }
+        
+        const backBtn = document.getElementById('backBtn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => this.showNewEntry());
+        }
+        
+        const backFromViewBtn = document.getElementById('backFromViewBtn');
+        if (backFromViewBtn) {
+            backFromViewBtn.addEventListener('click', () => this.showHistory());
+        }
+        
+        // Export button
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportData());
+        }
+        
+        // Correction buttons
+        const fixThemeBtn = document.getElementById('fixThemeBtn');
+        if (fixThemeBtn) {
+            fixThemeBtn.addEventListener('click', () => this.showThemeCorrection());
+        }
+        
+        const fixEmotionBtn = document.getElementById('fixEmotionBtn');
+        if (fixEmotionBtn) {
+            fixEmotionBtn.addEventListener('click', () => this.showEmotionCorrection());
+        }
+        
+        const saveThemeBtn = document.getElementById('saveThemeCorrection');
+        if (saveThemeBtn) {
+            saveThemeBtn.addEventListener('click', () => this.saveThemeCorrection());
+        }
+        
+        const saveEmotionBtn = document.getElementById('saveEmotionCorrection');
+        if (saveEmotionBtn) {
+            saveEmotionBtn.addEventListener('click', () => this.saveEmotionCorrection());
+        }
+    }
+    
+    saveEntry() {
+        if (this.currentText.length < APP_CONFIG.MIN_TEXT_LENGTH) {
+            this.toastManager.show(`Минимум ${APP_CONFIG.MIN_TEXT_LENGTH} символов`, 'error');
             return;
         }
         
-        historyList.innerHTML = entries.reverse().map(entry => {
-            const date = new Date(entry.date);
-            const formattedDate = date.toLocaleDateString('ru-RU', {
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            
-            const preview = entry.text.length > 100 
-                ? entry.text.substring(0, 100) + '...' 
-                : entry.text;
-            
-            const themes = entry.analysis?.themes?.slice(0, 3) || [];
-            
-            return `
-                <div class="history-item" data-id="${entry.id}">
-                    <div class="history-item-header">
-                        <div class="history-item-date">${formattedDate}</div>
-                        <div class="history-item-preview">${preview}</div>
-                    </div>
-                    ${themes.length > 0 && themes[0] !== 'Текст слишком короткий' && themes[0] !== 'Недостаточно данных / Другое' ? `
-                        <div class="history-item-themes">
-                            ${themes.map(theme => `<span>${theme}</span>`).join('')}
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }).join('');
+        const analysis = this.textAnalyzer.analyze(this.currentText);
+        const entry = this.entryManager.addEntry(this.currentText, analysis);
         
-        // Добавляем обработчики кликов
-        document.querySelectorAll('.history-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                if (!e.target.closest('button')) {
-                    const entryId = item.dataset.id;
-                    UIManager.showEntry(entryId);
-                }
-            });
-        });
-    },
-
-    showEntry: (entryId) => {
-        const entry = EntryManager.getById(entryId);
-        if (!entry) return;
-        
-        const date = new Date(entry.date);
-        document.getElementById('viewEntryDate').textContent = date.toLocaleDateString('ru-RU', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        
-        document.getElementById('viewEntryText').textContent = entry.text;
-        
-        if (entry.analysis) {
-            const analysisDate = new Date(entry.analysis.meta.analyzedAt);
-            document.getElementById('analysisDate').textContent = 
-                analysisDate.toLocaleDateString('ru-RU', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            
-            document.getElementById('viewSummary').textContent = entry.analysis.summary;
-            document.getElementById('viewQuestion').textContent = entry.analysis.question;
-            document.getElementById('viewRecommendationText').textContent = 
-                entry.analysis.recommendation.text;
-            
-            const typeBadge = document.getElementById('viewRecommendationType');
-            typeBadge.textContent = entry.analysis.recommendation.label;
-            typeBadge.className = `recommendation-badge ${entry.analysis.recommendation.type}`;
-            
-            const themesContainer = document.getElementById('viewThemes');
-            themesContainer.innerHTML = entry.analysis.themes
-                .map(theme => `<span>${theme}</span>`)
-                .join('');
-            
-            const emotionsContainer = document.getElementById('viewEmotions');
-            emotionsContainer.innerHTML = entry.analysis.emotions
-                .map(emotion => `<span>${emotion}</span>`)
-                .join('');
+        if (entry) {
+            this.toastManager.show('Запись сохранена', 'success');
+            this.clearText();
+            this.loadHistory();
+            this.updateStorageInfo();
+        } else {
+            this.toastManager.show('Ошибка сохранения', 'error');
+        }
+    }
+    
+    analyzeText() {
+        if (this.currentText.length < APP_CONFIG.MIN_TEXT_LENGTH) {
+            this.toastManager.show(`Минимум ${APP_CONFIG.MIN_TEXT_LENGTH} символов для анализа`, 'error');
+            return;
         }
         
-        UIManager.switchScreen('viewEntryScreen');
-    },
-
-    updateStorageInfo: () => {
-        const stats = EntryManager.getStats();
-        const storageInfo = document.getElementById('storageInfo');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const originalContent = analyzeBtn.innerHTML;
         
-        if (storageInfo) {
-            if (stats.totalEntries === 0) {
-                storageInfo.textContent = 'Нет сохранённых записей';
-            } else {
-                storageInfo.textContent = `${stats.totalEntries} записей · ${stats.totalThemes} тем · ${stats.totalEmotions} эмоций`;
-            }
-        }
-    },
-
-    switchScreen: (screenId) => {
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-        });
+        // Show loading state
+        analyzeBtn.innerHTML = '<span class="loading"></span> Анализируем...';
+        analyzeBtn.disabled = true;
         
-        const targetScreen = document.getElementById(screenId);
-        if (targetScreen) {
-            targetScreen.classList.add('active');
-        }
-        
-        // Прокрутка наверх при смене экрана
-        window.scrollTo({ top: 0, behavior: UIManager.isReducedMotion ? 'auto' : 'smooth' });
-    },
-
-    showAnalysis: (analysis, text) => {
-        UIManager.currentAnalysis = analysis;
-        UIManager.currentText = text;
-        
-        const resultDiv = document.getElementById('analysisResult');
-        if (!resultDiv) return;
-        
-        // Обновляем время анализа
+        // Simulate analysis delay for better UX
+        setTimeout(() => {
+            this.currentAnalysis = this.textAnalyzer.analyze(this.currentText);
+            this.showAnalysis(this.currentAnalysis);
+            
+            // Restore button
+            analyzeBtn.innerHTML = originalContent;
+            analyzeBtn.disabled = false;
+        }, 800);
+    }
+    
+    showAnalysis(analysis) {
+        const analysisContainer = document.getElementById('analysisResult');
         const analysisTime = document.getElementById('analysisTime');
+        
+        // Update analysis time
         if (analysisTime) {
             const now = new Date();
             analysisTime.textContent = now.toLocaleTimeString('ru-RU', {
@@ -730,294 +742,310 @@ const UIManager = {
             });
         }
         
-        // Обновляем контент
+        // Update content
         document.getElementById('summaryText').textContent = analysis.summary;
         document.getElementById('questionText').textContent = analysis.question;
-        document.getElementById('recommendationText').textContent = 
-            analysis.recommendation.text;
+        document.getElementById('recommendationText').textContent = analysis.recommendation.text;
         
-        const typeBadge = document.getElementById('recommendationType');
-        typeBadge.textContent = analysis.recommendation.label;
-        typeBadge.className = `recommendation-badge ${analysis.recommendation.type}`;
+        const recommendationBadge = document.getElementById('recommendationType');
+        recommendationBadge.textContent = analysis.recommendation.label;
+        recommendationBadge.className = `recommendation-badge ${analysis.recommendation.type}`;
         
-        const themesContainer = document.getElementById('themesList');
-        themesContainer.innerHTML = analysis.themes
-            .map(theme => `<span>${theme}</span>`)
-            .join('');
-        
-        const emotionsContainer = document.getElementById('emotionsList');
-        emotionsContainer.innerHTML = analysis.emotions
-            .map(emotion => `<span>${emotion}</span>`)
-            .join('');
-        
-        // Показываем блок анализа
-        resultDiv.classList.remove('hidden');
-        
-        // Плавная прокрутка к результатам
-        if (!UIManager.isReducedMotion) {
-            setTimeout(() => {
-                resultDiv.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'nearest' 
-                });
-            }, 100);
-        }
-    },
-
-    setupCorrectionListeners: () => {
-        const fixThemeBtn = document.getElementById('fixThemeBtn');
-        const fixEmotionBtn = document.getElementById('fixEmotionBtn');
-        const saveThemeBtn = document.getElementById('saveThemeCorrection');
-        const saveEmotionBtn = document.getElementById('saveEmotionCorrection');
-        
-        if (fixThemeBtn) {
-            fixThemeBtn.addEventListener('click', () => {
-                document.getElementById('themeCorrection').classList.remove('hidden');
-                document.getElementById('emotionCorrection').classList.add('hidden');
-            });
+        // Update themes
+        const themesList = document.getElementById('themesList');
+        if (themesList) {
+            themesList.innerHTML = analysis.themes
+                .map(theme => `<span>${theme}</span>`)
+                .join('');
         }
         
-        if (fixEmotionBtn) {
-            fixEmotionBtn.addEventListener('click', () => {
-                document.getElementById('emotionCorrection').classList.remove('hidden');
-                document.getElementById('themeCorrection').classList.add('hidden');
-            });
+        // Update emotions
+        const emotionsList = document.getElementById('emotionsList');
+        if (emotionsList) {
+            emotionsList.innerHTML = analysis.emotions
+                .map(emotion => `<span>${emotion}</span>`)
+                .join('');
         }
         
-        if (saveThemeBtn) {
-            saveThemeBtn.addEventListener('click', () => {
-                const selectedTheme = document.getElementById('themeSelect').value;
-                if (!selectedTheme) {
-                    ToastManager.show('Выберите тему для исправления', 'error');
-                    return;
-                }
-                
-                const keywords = TextAnalyzer.extractKeywords(UIManager.currentText);
-                keywords.forEach(word => {
-                    UserDictionary.addThemeWord(selectedTheme, word);
-                });
-                
-                ToastManager.show(`Тема исправлена на "${selectedTheme}"`, 'success');
-                document.getElementById('themeCorrection').classList.add('hidden');
-                
-                const newAnalysis = TextAnalyzer.analyze(UIManager.currentText);
-                UIManager.showAnalysis(newAnalysis, UIManager.currentText);
-            });
-        }
+        // Show analysis with animation
+        analysisContainer.classList.remove('hidden');
         
-        if (saveEmotionBtn) {
-            saveEmotionBtn.addEventListener('click', () => {
-                const selectedEmotion = document.getElementById('emotionSelect').value;
-                if (!selectedEmotion) {
-                    ToastManager.show('Выберите эмоцию для исправления', 'error');
-                    return;
-                }
-                
-                const keywords = TextAnalyzer.extractKeywords(UIManager.currentText);
-                keywords.forEach(word => {
-                    UserDictionary.addEmotionWord(selectedEmotion, word);
-                });
-                
-                ToastManager.show(`Эмоция исправлена на "${selectedEmotion}"`, 'success');
-                document.getElementById('emotionCorrection').classList.add('hidden');
-                
-                const newAnalysis = TextAnalyzer.analyze(UIManager.currentText);
-                UIManager.showAnalysis(newAnalysis, UIManager.currentText);
-            });
-        }
-    },
-
-    setupEventListeners: () => {
-        // Сохранение записи
-        const saveBtn = document.getElementById('saveBtn');
-        if (saveBtn) {
-            saveBtn.addEventListener('click', () => {
-                const text = document.getElementById('entryText').value.trim();
-                
-                if (!text) {
-                    ToastManager.show('Введите текст записи', 'error');
-                    return;
-                }
-                
-                if (text.length < APP_CONFIG.MIN_TEXT_LENGTH) {
-                    ToastManager.show(`Минимальная длина записи: ${APP_CONFIG.MIN_TEXT_LENGTH} символов`, 'error');
-                    return;
-                }
-                
-                const analysis = TextAnalyzer.analyze(text);
-                const saved = EntryManager.add(text, analysis);
-                
-                if (saved) {
-                    ToastManager.show('Запись сохранена', 'success');
-                    document.getElementById('entryText').value = '';
-                    document.getElementById('analysisResult').classList.add('hidden');
-                    
-                    // Сброс высоты textarea
-                    const textarea = document.getElementById('entryText');
-                    textarea.style.height = '160px';
-                    
-                    UIManager.updateCharCount();
-                    UIManager.loadHistory();
-                    UIManager.updateStorageInfo();
-                } else {
-                    ToastManager.show('Ошибка при сохранении', 'error');
-                }
-            });
-        }
-
-        // Анализ текста
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        if (analyzeBtn) {
-            analyzeBtn.addEventListener('click', () => {
-                const text = document.getElementById('entryText').value.trim();
-                
-                if (!text) {
-                    ToastManager.show('Введите текст для анализа', 'error');
-                    return;
-                }
-                
-                if (text.length < APP_CONFIG.MIN_TEXT_LENGTH) {
-                    ToastManager.show(`Минимальная длина для анализа: ${APP_CONFIG.MIN_TEXT_LENGTH} символов`, 'error');
-                    return;
-                }
-                
-                // Показываем состояние загрузки
-                const originalText = analyzeBtn.innerHTML;
-                analyzeBtn.innerHTML = `
-                    <span class="loading"></span>
-                    Анализируем...
-                `;
-                analyzeBtn.disabled = true;
-                
-                // Имитация задержки для UX
+        setTimeout(() => {
+            analysisContainer.classList.add('show');
+            
+            // Scroll to analysis
+            if (!this.isReducedMotion) {
                 setTimeout(() => {
-                    const analysis = TextAnalyzer.analyze(text);
-                    UIManager.showAnalysis(analysis, text);
-                    
-                    // Восстанавливаем кнопку
-                    analyzeBtn.innerHTML = originalText;
-                    analyzeBtn.disabled = false;
-                }, 800);
-            });
-        }
-
-        // Очистка поля
-        const clearBtn = document.getElementById('clearBtn');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', () => {
-                const textarea = document.getElementById('entryText');
-                if (textarea.value.trim()) {
-                    if (confirm('Очистить поле ввода?')) {
-                        textarea.value = '';
-                        textarea.style.height = '160px';
-                        document.getElementById('analysisResult').classList.add('hidden');
-                        UIManager.updateCharCount();
-                        ToastManager.show('Поле очищено', 'info');
-                    }
-                }
-            });
-        }
-
-        // Навигация
-        const historyBtn = document.getElementById('historyBtn');
-        if (historyBtn) {
-            historyBtn.addEventListener('click', () => {
-                UIManager.loadHistory();
-                UIManager.switchScreen('historyScreen');
-            });
-        }
-
-        const backBtn = document.getElementById('backBtn');
-        if (backBtn) {
-            backBtn.addEventListener('click', () => {
-                UIManager.switchScreen('newEntryScreen');
-            });
-        }
-
-        const backFromViewBtn = document.getElementById('backFromViewBtn');
-        if (backFromViewBtn) {
-            backFromViewBtn.addEventListener('click', () => {
-                UIManager.switchScreen('historyScreen');
-            });
-        }
-
-        // Экспорт JSON
-        const exportBtn = document.getElementById('exportBtn');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', () => {
-                const jsonData = EntryManager.exportToJSON();
-                const blob = new Blob([jsonData], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `trace_export_${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                ToastManager.show('Данные экспортированы', 'success');
-            });
-        }
-
-        // Импорт данных (скрытая функция для разработки)
-        const handleImport = (event) => {
-            if (event.ctrlKey && event.shiftKey && event.key === 'I') {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.json';
-                
-                input.onchange = (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        const success = EntryManager.importFromJSON(e.target.result);
-                        if (success) {
-                            ToastManager.show('Данные импортированы', 'success');
-                            UIManager.loadHistory();
-                            UIManager.updateStorageInfo();
-                        } else {
-                            ToastManager.show('Ошибка импорта', 'error');
-                        }
-                    };
-                    reader.readAsText(file);
-                };
-                
-                input.click();
+                    analysisContainer.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest'
+                    });
+                }, 300);
             }
-        };
+        }, 50);
         
-        document.addEventListener('keydown', handleImport);
-    },
-
-    updateCharCount: () => {
-        const textarea = document.getElementById('entryText');
-        const count = textarea ? textarea.value.length : 0;
-        const charCountElement = document.getElementById('charCount');
-        
-        if (charCountElement) {
-            charCountElement.textContent = `${count} символов`;
-        }
-    }
-};
-
-// Инициализация приложения
-document.addEventListener('DOMContentLoaded', () => {
-    // Проверяем, есть ли уже установленный PWA
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-        console.log('Приложение запущено в режиме PWA');
-    }
-    
-    // Проверяем поддержку Service Worker
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(() => {
-            console.log('Service Worker готов');
+        // Add fade-in animations to sections
+        const sections = analysisContainer.querySelectorAll('.fade-in');
+        sections.forEach((section, index) => {
+            section.style.animationDelay = `${index * 0.1}s`;
         });
     }
     
-    // Инициализация UI
-    UIManager.init();
+    clearText() {
+        const textarea = document.getElementById('entryText');
+        const analysisContainer = document.getElementById('analysisResult');
+        
+        if (textarea.value.trim() === '') return;
+        
+        if (confirm('Очистить поле ввода?')) {
+            textarea.value = '';
+            this.currentText = '';
+            textarea.style.height = 'auto';
+            this.updateCharCount();
+            
+            if (analysisContainer) {
+                analysisContainer.classList.remove('show');
+                setTimeout(() => {
+                    analysisContainer.classList.add('hidden');
+                }, 300);
+            }
+            
+            this.toastManager.show('Текст очищен', 'info');
+        }
+    }
+    
+    showHistory() {
+        this.switchScreen('historyScreen');
+        
+        const historyCount = document.getElementById('historyCount');
+        const entries = this.entryManager.getAllEntries();
+        
+        if (historyCount) {
+            historyCount.textContent = `${entries.length} записей`;
+        }
+    }
+    
+    showNewEntry() {
+        this.switchScreen('newEntryScreen');
+    }
+    
+    switchScreen(screenId) {
+        // Hide all screens
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+        
+        // Show target screen
+        const targetScreen = document.getElementById(screenId);
+        if (targetScreen) {
+            targetScreen.classList.add('active');
+        }
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: this.isReducedMotion ? 'auto' : 'smooth' });
+    }
+    
+    loadHistory() {
+        const historyList = document.getElementById('historyList');
+        const entries = this.entryManager.getAllEntries();
+        
+        if (!historyList) return;
+        
+        if (entries.length === 0) {
+            historyList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📝</div>
+                    <h3 class="empty-title">Пока нет записей</h3>
+                    <p class="empty-description">Ваши мысли появятся здесь</p>
+                </div>
+            `;
+            return;
+        }
+        
+        historyList.innerHTML = entries.map(entry => {
+            const date = new Date(entry.date);
+            const formattedDate = date.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const preview = entry.text.length > 120 
+                ? entry.text.substring(0, 120) + '...' 
+                : entry.text;
+            
+            const themes = entry.analysis?.themes?.slice(0, 2) || [];
+            
+            return `
+                <div class="history-item" data-id="${entry.id}">
+                    <div class="history-item-header">
+                        <div class="history-date">${formattedDate}</div>
+                    </div>
+                    <div class="history-preview">${preview}</div>
+                    ${themes.length > 0 ? `
+                        <div class="history-themes">
+                            ${themes.map(theme => `<span>${theme}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+        
+        // Add click handlers
+        historyList.querySelectorAll('.history-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const entryId = item.dataset.id;
+                this.showEntry(entryId);
+            });
+        });
+    }
+    
+    showEntry(entryId) {
+        const entry = this.entryManager.getEntry(entryId);
+        if (!entry) return;
+        
+        const date = new Date(entry.date);
+        const viewEntryDate = document.getElementById('viewEntryDate');
+        if (viewEntryDate) {
+            viewEntryDate.textContent = date.toLocaleDateString('ru-RU', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        const viewEntryText = document.getElementById('viewEntryText');
+        if (viewEntryText) {
+            viewEntryText.textContent = entry.text;
+        }
+        
+        if (entry.analysis) {
+            const analysisDate = document.getElementById('analysisDate');
+            if (analysisDate) {
+                const analysisTime = new Date(entry.analysis.meta.analyzedAt);
+                analysisDate.textContent = analysisTime.toLocaleTimeString('ru-RU', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+            
+            document.getElementById('viewSummary').textContent = entry.analysis.summary;
+            document.getElementById('viewQuestion').textContent = entry.analysis.question;
+            document.getElementById('viewRecommendationText').textContent = entry.analysis.recommendation.text;
+            
+            const recommendationBadge = document.getElementById('viewRecommendationType');
+            recommendationBadge.textContent = entry.analysis.recommendation.label;
+            recommendationBadge.className = `recommendation-badge ${entry.analysis.recommendation.type}`;
+            
+            const viewThemes = document.getElementById('viewThemes');
+            if (viewThemes) {
+                viewThemes.innerHTML = entry.analysis.themes
+                    .map(theme => `<span>${theme}</span>`)
+                    .join('');
+            }
+            
+            const viewEmotions = document.getElementById('viewEmotions');
+            if (viewEmotions) {
+                viewEmotions.innerHTML = entry.analysis.emotions
+                    .map(emotion => `<span>${emotion}</span>`)
+                    .join('');
+            }
+        }
+        
+        this.switchScreen('viewEntryScreen');
+    }
+    
+    updateStorageInfo() {
+        const stats = this.entryManager.getStats();
+        const storageInfo = document.getElementById('storageInfo');
+        
+        if (storageInfo) {
+            if (stats.total === 0) {
+                storageInfo.textContent = 'Нет сохранённых записей';
+            } else {
+                const lastDate = new Date(stats.lastEntry);
+                const formattedDate = lastDate.toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'short'
+                });
+                storageInfo.textContent = `${stats.total} записей, последняя: ${formattedDate}`;
+            }
+        }
+    }
+    
+    exportData() {
+        const jsonData = this.entryManager.exportToJSON();
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `trace_export_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        this.toastManager.show('Данные экспортированы', 'success');
+    }
+    
+    showThemeCorrection() {
+        document.getElementById('themeCorrection').classList.remove('hidden');
+        document.getElementById('emotionCorrection').classList.add('hidden');
+    }
+    
+    showEmotionCorrection() {
+        document.getElementById('emotionCorrection').classList.remove('hidden');
+        document.getElementById('themeCorrection').classList.add('hidden');
+    }
+    
+    saveThemeCorrection() {
+        const selectedTheme = document.getElementById('themeSelect').value;
+        if (!selectedTheme) {
+            this.toastManager.show('Выберите тему', 'error');
+            return;
+        }
+        
+        const keywords = this.textAnalyzer.extractKeywords(this.currentText);
+        this.textAnalyzer.addThemeToDictionary(selectedTheme, keywords);
+        
+        this.toastManager.show('Тема исправлена', 'success');
+        document.getElementById('themeCorrection').classList.add('hidden');
+        
+        // Re-analyze with updated dictionary
+        this.currentAnalysis = this.textAnalyzer.analyze(this.currentText);
+        this.showAnalysis(this.currentAnalysis);
+    }
+    
+    saveEmotionCorrection() {
+        const selectedEmotion = document.getElementById('emotionSelect').value;
+        if (!selectedEmotion) {
+            this.toastManager.show('Выберите эмоцию', 'error');
+            return;
+        }
+        
+        const keywords = this.textAnalyzer.extractKeywords(this.currentText);
+        this.textAnalyzer.addEmotionToDictionary(selectedEmotion, keywords);
+        
+        this.toastManager.show('Эмоция исправлена', 'success');
+        document.getElementById('emotionCorrection').classList.add('hidden');
+        
+        // Re-analyze with updated dictionary
+        this.currentAnalysis = this.textAnalyzer.analyze(this.currentText);
+        this.showAnalysis(this.currentAnalysis);
+    }
+}
+
+// Initialize app when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.traceApp = new TraceApp();
+    
+    // Register service worker for PWA
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+            .catch(err => console.error('Service Worker registration failed:', err));
+    }
 });
